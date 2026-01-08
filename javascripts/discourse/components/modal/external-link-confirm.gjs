@@ -73,7 +73,7 @@ export default class ExternalLinkConfirm extends Component {
         <DButton
           @translatedLabel={{i18n "js.continue"}}
           @action={{this.proceed}}
-          @icon="arrow-up-right-from-square"
+          @icon={{settings.exit_confirmation_continue_icon}}
           class="btn-primary"
         />
         <DButton
