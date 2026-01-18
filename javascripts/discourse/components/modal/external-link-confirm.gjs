@@ -28,10 +28,16 @@ export default class ExternalLinkConfirm extends Component {
     return "external-link-alt";
   }
 
+  // 计算图标颜色
   get iconColor() {
-     if (this.isDangerous) return "color: #FF3B30;"; // iOS Red
-     if (this.isRisky) return "color: #FF9500;";     // iOS Orange
-     return "color: #007AFF;";                       // iOS Blue
+     if (this.isDangerous) return "#FF3B30"; // iOS Red
+     if (this.isRisky) return "#FF9500";     // iOS Orange
+     return "#007AFF";                       // iOS Blue
+  }
+
+  // ✨ 修复核心：在 JS 中拼接样式，替代模板中的 concat
+  get iconStyle() {
+    return `font-size: 3.5em; color: ${this.iconColor};`;
   }
 
   @action
@@ -53,14 +59,12 @@ export default class ExternalLinkConfirm extends Component {
   }
 
   <template>
-    {{!-- 增加 class 这里的 external-link-modal 是关键 --}}
     <DModal @title={{this.title}} @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
       <:body>
-        {{!-- 这里不需要额外的 padding div，因为 CSS 控制了 --}}
-        
         {{!-- 大图标区域 --}}
         <div class="modal-icon-wrapper">
-           {{dIcon this.titleIcon style=(concat "font-size: 3.5em; " this.iconColor)}}
+           {{!-- 修复：直接使用 this.iconStyle --}}
+           {{dIcon this.titleIcon style=this.iconStyle}}
         </div>
 
         <p>
