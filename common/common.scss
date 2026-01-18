@@ -1,7 +1,7 @@
 @import "str-to-list";
 @import "svg-icon-mixins";
 
-// 1. 读取配置 (保持不变)
+// 1. 读取配置
 $internal-list: str-to-list("#{$internal_domains}", "|");
 $trusted-list: str-to-list("#{$excluded_domains}", "|");
 $risky-list: str-to-list("#{$risky_domains}", "|");
@@ -20,7 +20,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   @if $selector != "" { #{$selector} { @content; } }
 }
 
-// 3. 链接图标逻辑
+// 3. 链接图标逻辑 (强制前置)
 .topic-body .cooked {
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not([href^="/"]):not([href^="#"]) {
     &:before {
@@ -48,19 +48,13 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   }
 }
 
-.blocked-link {
-  color: var(--primary-low-mid);
-  text-decoration: line-through;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
+.blocked-link { color: var(--primary-low-mid); text-decoration: line-through; cursor: not-allowed; opacity: 0.6; }
 
 // ============================================================
-// 4. Apple Style Modal - 终极修复版
+// 4. Apple Style Modal - Layout Fix
 // ============================================================
 
 .d-modal.external-link-modal {
-  
   .d-modal__content {
     border-radius: 18px;
     background: var(--secondary);
@@ -70,128 +64,120 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     overflow: hidden;
   }
 
-  // ⚠️ 强制隐藏原生 Header
-  .d-modal__header {
-    display: none !important;
-  }
+  // 隐藏原生
+  .d-modal__header { display: none !important; }
+  .d-modal__body { padding: 0 !important; }
 
-  // Body: 清除 padding，让我们的自定义 header 顶满
-  .d-modal__body {
-    padding: 0 !important;
-    
-    // --- 自定义 Header ---
-    .custom-modal-header {
-      padding: 16px 20px;
+  // --- 自定义 Header ---
+  .custom-modal-header {
+    position: relative; // 为绝对定位提供上下文
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(var(--primary-rgb), 0.05);
+    background: var(--secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center; // 🌟 核心：让中间的内容绝对居中
+    min-height: 24px;
+
+    // 中间的内容组
+    .header-center-content {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(var(--primary-rgb), 0.05);
-      background: var(--secondary);
+      gap: 8px;
+      z-index: 1;
+    }
 
-      .header-left {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex: 1;
-        overflow: hidden; // 防止文字溢出
+    // 图标 (修复不显示问题)
+    .header-icon {
+      color: var(--tertiary);
+      display: flex; // 防止塌陷
+      svg { 
+        width: 1.2em !important; // 强制大小
+        height: 1.2em !important;
       }
+    }
 
-      // 图标
-      .header-icon {
-        display: flex;
-        align-items: center;
-        color: var(--tertiary); // 默认蓝色
-        svg { width: 1.2em; height: 1.2em; }
-      }
+    .header-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary);
+      white-space: nowrap;
+    }
 
-      // 标题
-      .header-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--primary);
-        white-space: nowrap;
-      }
+    // 徽章
+    .type-badge {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      
+      &.normal { background: rgba(var(--tertiary-rgb), 0.1); color: var(--tertiary); }
+      &.risky { background: rgba(var(--yellow-600), 0.15); color: var(--yellow-600); }
+      &.dangerous { background: rgba(var(--danger-rgb), 0.15); color: var(--danger); }
+    }
 
-      // 徽章 (Capsule)
-      .type-badge {
-        font-size: 0.75rem;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-weight: 600;
-        line-height: 1.4;
-        white-space: nowrap;
-        
-        &.normal { background: rgba(var(--tertiary-rgb), 0.1); color: var(--tertiary); }
-        &.risky { background: rgba(var(--yellow-600), 0.15); color: var(--yellow-600); }
-        &.dangerous { background: rgba(var(--danger-rgb), 0.15); color: var(--danger); }
-      }
-
-      // 关闭按钮 (右侧)
-      .close-btn {
-        margin: 0;
-        padding: 4px;
+    // 关闭按钮 (绝对定位在右侧)
+    .header-close-btn {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      
+      .btn {
         background: transparent;
         color: var(--primary-medium);
-        &:hover { color: var(--primary); background: rgba(var(--primary-rgb), 0.05); }
-      }
-    }
-    
-    // 针对不同风险，Header 图标变色
-    .custom-modal-header {
-      .risky .header-icon { color: var(--yellow-600); }
-      .dangerous .header-icon { color: var(--danger); }
-    }
-
-    // --- 内容容器 ---
-    .modal-body-container {
-      padding: 20px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .main-alert-text {
-      text-align: center;
-      .description {
-        color: var(--primary-medium);
-        font-size: 0.9rem;
-        line-height: 1.5;
-        margin-bottom: 8px;
-      }
-      .confirm-question {
-        color: var(--primary);
-        font-weight: 600;
-        font-size: 1rem;
-        margin: 0 0 8px 0;
-      }
-      .redirect-hint {
-        font-size: 0.85rem;
-        color: var(--primary-low-mid);
+        padding: 8px;
         margin: 0;
+        &:hover { background: rgba(var(--primary-rgb), 0.05); color: var(--primary); }
+        svg { width: 1em; height: 1em; }
       }
     }
+  }
+  
+  // 变色逻辑
+  .custom-modal-header {
+    &:has(.risky) .header-icon { color: var(--yellow-600); }
+    &:has(.dangerous) .header-icon { color: var(--danger); }
+  }
 
-    .url-preview {
-      background: var(--primary-very-low);
-      color: var(--primary);
-      padding: 12px;
-      border-radius: 8px;
-      font-family: monospace;
-      font-size: 0.85rem;
-      word-break: break-all;
-      text-align: center;
-      border: 1px solid rgba(var(--primary-rgb), 0.05);
-    }
+  // 内容区域
+  .modal-body-container {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
 
-    .report-hint-box {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      font-size: 0.8rem;
-      color: var(--primary-medium);
-      svg { color: var(--primary-low-mid); width: 0.9em; height: 0.9em; }
-    }
+  .main-alert-text {
+    text-align: center;
+    .description { color: var(--primary-medium); font-size: 0.9rem; margin-bottom: 8px; line-height: 1.5; }
+    .confirm-question { color: var(--primary); font-weight: 600; font-size: 1rem; margin: 0 0 8px 0; }
+    .redirect-hint { font-size: 0.85rem; color: var(--primary-low-mid); margin: 0; }
+  }
+
+  .url-preview {
+    background: var(--primary-very-low);
+    color: var(--primary);
+    padding: 12px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    word-break: break-all;
+    text-align: center;
+    border: 1px solid rgba(var(--primary-rgb), 0.05);
+  }
+
+  .report-hint-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--primary-medium);
+    svg { color: var(--primary-low-mid); width: 0.9em; height: 0.9em; }
   }
 
   // Footer
@@ -202,15 +188,9 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-
-    .btn {
-      border-radius: 8px;
-      font-weight: 600;
-      padding: 8px 16px;
-      margin: 0;
-      &.btn-primary { background: #007AFF; color: #fff; }
-      &.btn-danger { background: #FF3B30; color: #fff; }
-      &.btn-warning { background: #FF9500; color: #fff; }
-    }
+    .btn { border-radius: 8px; font-weight: 600; padding: 8px 16px; margin: 0; }
+    .btn-primary { background: #007AFF; color: #fff; }
+    .btn-danger { background: #FF3B30; color: #fff; }
+    .btn-warning { background: #FF9500; color: #fff; }
   }
 }
