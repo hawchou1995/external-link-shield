@@ -16,6 +16,7 @@ export default class ExternalLinkConfirm extends Component {
   get isNormal() { return !this.isDangerous && !this.isRisky; }
 
   // --- 文本 Getters ---
+  // 标题直接包含类型描述
   get title() {
     if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_title"));
     if (this.isRisky) return i18n(themePrefix("secure_links.risky_title"));
@@ -25,20 +26,21 @@ export default class ExternalLinkConfirm extends Component {
   get disclaimerText() { return i18n(themePrefix("secure_links.leaving_confirmation_disclaimer")); }
   get questionText() { return i18n(themePrefix("secure_links.leaving_confirmation_question")); }
   get destinationText() { return i18n(themePrefix("secure_links.leaving_confirmation_destination")); }
+  
   get dangerousWarningText() { return i18n(themePrefix("secure_links.dangerous_warning")); }
   get riskyWarningText() { return i18n(themePrefix("secure_links.risky_warning")); }
+  
   get reportHintText() { return i18n(themePrefix("secure_links.leaving_confirmation_report_hint")); }
   
-  // 按钮文本 (获取翻译后的字符串)
   get copyUrlLabel() { return i18n(themePrefix("secure_links.copy_url")); }
   get continueLabel() { return i18n(themePrefix("secure_links.continue")); }
   get cancelLabel() { return i18n("cancel"); }
 
-  // --- 样式与图标 ---
+  // --- 图标定义 ---
   get titleIcon() {
     if (this.isDangerous) return "skull";
     if (this.isRisky) return "triangle-exclamation";
-    return "external-link-alt";
+    return "external-link-alt"; // 普通链接用这个图标
   }
 
   // --- 动作 ---
@@ -61,50 +63,43 @@ export default class ExternalLinkConfirm extends Component {
   }
 
   <template>
-    <DModal @title={{this.title}} @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
+    {{!-- 
+      1. @title="" : 隐藏 Discourse 默认标题栏 
+      2. 增加 class="external-link-modal" 用于 CSS 定制
+    --}}
+    <DModal @title="" @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
       <:body>
         <div class="modal-body-container">
           
-          {{!-- 1. 顶部图标 (图标样式交由 CSS 控制) --}}
-          <div class="modal-icon-wrapper {{this.level}}">
+          {{!-- ✨ 自定义标题栏 (Icon + Text 一行显示) --}}
+          <div class="custom-header {{this.level}}">
              {{dIcon this.titleIcon}}
+             <span class="header-title">{{this.title}}</span>
           </div>
 
-          {{!-- 2. 普通外链的免责声明 --}}
-          {{#if this.isNormal}}
-            <p class="disclaimer-text">
-              {{this.disclaimerText}}
-            </p>
-          {{/if}}
+          {{!-- 分割线 --}}
+          <div class="header-separator"></div>
 
-          {{!-- 3. 核心提示文本 --}}
+          {{!-- 描述文本 --}}
           <div class="main-alert-text">
+            {{!-- 危险/风险链接显示具体警告 --}}
             {{#if this.isDangerous}}
-              <div class="alert-box dangerous">
-                {{this.dangerousWarningText}}
-              </div>
-            {{/if}}
-            
-            {{#if this.isRisky}}
-              <div class="alert-box risky">
-                {{this.riskyWarningText}}
-              </div>
-            {{/if}}
-
-            {{#if this.isNormal}}
-               <span class="confirm-question">{{this.questionText}}</span>
-               <div class="redirect-hint">
-                 {{this.destinationText}}
-               </div>
+              <p class="warning-text dangerous">{{this.dangerousWarningText}}</p>
+            {{else if this.isRisky}}
+              <p class="warning-text risky">{{this.riskyWarningText}}</p>
+            {{else}}
+              {{!-- 普通链接显示常规提示 --}}
+              <p class="disclaimer-text">{{this.disclaimerText}}</p>
+              <p class="confirm-question">{{this.questionText}}</p>
             {{/if}}
           </div>
 
-          {{!-- 4. URL 胶囊 --}}
+          {{!-- URL 预览胶囊 --}}
           <div class="url-preview">
             {{@model.url}}
           </div>
 
-          {{!-- 5. 举报提示 --}}
+          {{!-- 举报提示 --}}
           {{#unless this.isDangerous}}
             <div class="report-hint-box">
               {{dIcon "flag"}}
@@ -116,7 +111,6 @@ export default class ExternalLinkConfirm extends Component {
       </:body>
 
       <:footer>
-        {{!-- 修复：使用 @translatedLabel 防止二次翻译乱码 --}}
         <DButton
           @translatedLabel={{this.cancelLabel}} 
           @action={{@closeModal}}
