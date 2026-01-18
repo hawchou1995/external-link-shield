@@ -15,14 +15,14 @@ export default class ExternalLinkConfirm extends Component {
   get isRisky() { return this.level === 'risky'; }
   get isNormal() { return !this.isDangerous && !this.isRisky; }
 
-  // --- 文本 ---
+  // --- 文本 Getters ---
   get title() { return i18n(themePrefix("secure_links.leaving_confirmation_title")); }
 
-  // 徽章文本 (Badge)
+  // ✨ 徽章文本 - 精确对应 6 级分类中的弹窗部分
   get badgeText() {
-    if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_title")); 
-    if (this.isRisky) return i18n(themePrefix("secure_links.risky_title"));       
-    return i18n(themePrefix("secure_links.external_label"));                      
+    if (this.isDangerous) return i18n(themePrefix("secure_links.badge_dangerous")); // 危险
+    if (this.isRisky) return i18n(themePrefix("secure_links.badge_risky"));         // 风险
+    return i18n(themePrefix("secure_links.badge_external"));                        // 普通/外部
   }
 
   get descriptionText() {
@@ -35,12 +35,11 @@ export default class ExternalLinkConfirm extends Component {
   get destinationText() { return i18n(themePrefix("secure_links.leaving_confirmation_destination")); }
   get reportHintText() { return i18n(themePrefix("secure_links.leaving_confirmation_report_hint")); }
   
-  // 按钮文本
   get copyUrlLabel() { return i18n(themePrefix("secure_links.copy_url")); }
   get continueLabel() { return i18n(themePrefix("secure_links.continue")); }
   get cancelLabel() { return i18n("cancel"); }
 
-  // --- 图标 ---
+  // --- 图标定义 ---
   get titleIcon() {
     if (this.isDangerous) return "skull";
     if (this.isRisky) return "triangle-exclamation";
@@ -67,67 +66,48 @@ export default class ExternalLinkConfirm extends Component {
   }
 
   <template>
-    {{!-- 
-      @title="" 隐藏原生标题
-      我们将在 body 里手动渲染一个更漂亮的 Header
-    --}}
     <DModal @title="" @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
       <:body>
         
-        {{!-- ✨ 模拟 Header 开始 --}}
+        {{!-- ✨ 标题栏 (相对定位容器) --}}
         <div class="custom-modal-header">
-          <div class="header-left">
-            {{!-- 1. 图标 --}}
-            <span class="header-icon">
-              {{dIcon this.titleIcon}}
-            </span>
-            {{!-- 2. 标题文字 --}}
-            <span class="header-title">{{this.title}}</span>
-            {{!-- 3. 徽章 --}}
-            <span class="type-badge {{this.level}}">
-              {{this.badgeText}}
-            </span>
+          
+          {{!-- 1. 绝对居中的标题内容 --}}
+          <div class="header-center-content">
+             {{dIcon this.titleIcon class="header-icon"}}
+             <span class="header-title">{{this.title}}</span>
+             <span class="type-badge {{this.level}}">{{this.badgeText}}</span>
           </div>
           
-          {{!-- 4. 关闭按钮 (X) --}}
-          <div class="header-right">
+          {{!-- 2. 绝对定位的关闭按钮 --}}
+          <div class="header-close-btn">
              <DButton 
                @icon="times" 
                @action={{@closeModal}} 
-               class="btn-flat icon-only close-btn" 
+               class="btn-flat icon-only" 
              />
           </div>
         </div>
-        {{!-- ✨ 模拟 Header 结束 --}}
 
         <div class="modal-body-container">
-          
-          {{!-- 描述区 --}}
           <div class="main-alert-text">
             <p class="description">{{this.descriptionText}}</p>
-            
             {{#if this.isNormal}}
                <p class="confirm-question">{{this.questionText}}</p>
             {{/if}}
-            
-            <p class="redirect-hint">
-               {{this.destinationText}}
-            </p>
+            <p class="redirect-hint">{{this.destinationText}}</p>
           </div>
 
-          {{!-- URL 胶囊 --}}
           <div class="url-preview">
             {{@model.url}}
           </div>
 
-          {{!-- 举报提示 --}}
           {{#unless this.isDangerous}}
             <div class="report-hint-box">
               {{dIcon "flag"}}
               <span>{{this.reportHintText}}</span>
             </div>
           {{/unless}}
-
         </div>
       </:body>
 
