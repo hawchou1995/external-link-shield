@@ -2,9 +2,23 @@ import Component from "@glimmer/component";
 import { action } from "@ember/object";
 import DModal from "discourse/components/d-modal";
 import DButton from "discourse/components/d-button";
-import dIcon from "discourse-common/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import { inject as service } from "@ember/service";
+import { htmlSafe } from "@ember/template";
+
+// --- 🛡️ 强制内联 SVG 图标库 (不再依赖系统注册) ---
+const SVGS = {
+  // 普通外链 (External Link)
+  normal: '<svg viewBox="0 0 512 512" fill="currentColor"><path d="M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z"/></svg>',
+  // 风险 (Triangle Exclamation)
+  risky: '<svg viewBox="0 0 512 512" fill="currentColor"><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>',
+  // 危险 (Skull)
+  dangerous: '<svg viewBox="0 0 512 512" fill="currentColor"><path d="M416 398.9c58.8-26.1 96-85.1 96-150.9C512 137.3 397.3 48 256 48S0 137.3 0 248c0 65.8 37.2 124.8 96 150.9V424c0 22.1 17.9 40 40 40h72c0 26.5 21.5 48 48 48s48-21.5 48-48h72c22.1 0 40-17.9 40-40V398.9zM192 256c0-17.7 14.3-32 32-32s32 14.3 32 32-14.3 32-32 32-32-14.3-32-32zm128 32c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z"/></svg>',
+  // 关闭 (Times)
+  times: '<svg viewBox="0 0 384 512" fill="currentColor"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s-12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></svg>',
+  // 举报 (Flag)
+  flag: '<svg viewBox="0 0 448 512" fill="currentColor"><path d="M64 32C64 14.3 49.7 0 32 0S0 14.3 0 32V64 368 480c0 17.7 14.3 32 32 32s32-14.3 32-32V352l64.3-16.1c41.1-10.3 84.6-5.5 122.5 13.4c44.2 22.1 95.5 24.8 141.7 7.4l34.7-13c12.5-4.7 20.8-16.6 20.8-30V66.1c0-23-24.2-38-44.8-27.7l-9.6 4.8c-46.3 23.2-100.8 23.2-147.1 0c-35.1-17.6-75.4-22-113.5-12.5L64 48V32z"/></svg>'
+};
 
 export default class ExternalLinkConfirm extends Component {
   @service toaster;
@@ -38,11 +52,19 @@ export default class ExternalLinkConfirm extends Component {
   get continueLabel() { return i18n(themePrefix("secure_links.continue")); }
   get cancelLabel() { return i18n("cancel"); }
 
-  // --- 图标定义 (必须匹配 solid.scss 的 keys) ---
-  get titleIcon() {
-    if (this.isDangerous) return "skull";
-    if (this.isRisky) return "triangle-exclamation";
-    return "external-link-alt"; 
+  // --- 图标渲染 (直接返回 HTML 安全字符串) ---
+  get titleIconHtml() {
+    if (this.isDangerous) return htmlSafe(SVGS.dangerous);
+    if (this.isRisky) return htmlSafe(SVGS.risky);
+    return htmlSafe(SVGS.normal);
+  }
+
+  get closeIconHtml() {
+    return htmlSafe(SVGS.times);
+  }
+
+  get flagIconHtml() {
+    return htmlSafe(SVGS.flag);
   }
 
   // --- 动作 ---
@@ -65,6 +87,7 @@ export default class ExternalLinkConfirm extends Component {
   }
 
   <template>
+    {{!-- 隐藏原生标题 --}}
     <DModal @title="" @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
       <:body>
         
@@ -73,23 +96,19 @@ export default class ExternalLinkConfirm extends Component {
           
           {{!-- 1. 标题内容 --}}
           <div class="header-center-content">
-             {{!-- 图标 --}}
+             {{!-- 内联 SVG --}}
              <span class="header-icon-span">
-                {{dIcon this.titleIcon}}
+                {{this.titleIconHtml}}
              </span>
-             {{!-- 标题 --}}
              <span class="header-title">{{this.title}}</span>
-             {{!-- 徽章 --}}
              <span class="type-badge {{this.level}}">{{this.badgeText}}</span>
           </div>
           
-          {{!-- 2. 关闭按钮 (X) --}}
+          {{!-- 2. 手写原生关闭按钮 (确保显示) --}}
           <div class="header-close-btn">
-             <DButton 
-               @icon="times" 
-               @action={{@closeModal}} 
-               class="btn-flat icon-only" 
-             />
+             <button class="btn-flat icon-only manual-close" {{on "click" @closeModal}} type="button">
+                {{this.closeIconHtml}}
+             </button>
           </div>
         </div>
 
@@ -108,7 +127,7 @@ export default class ExternalLinkConfirm extends Component {
 
           {{#unless this.isDangerous}}
             <div class="report-hint-box">
-              {{dIcon "flag"}}
+              {{this.flagIconHtml}}
               <span>{{this.reportHintText}}</span>
             </div>
           {{/unless}}
