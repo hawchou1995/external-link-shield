@@ -1,7 +1,7 @@
 @import "str-to-list";
 @import "svg-icon-mixins";
 
-// 1. 配置读取
+// 1. 读取配置
 $internal-list: str-to-list("#{$internal_domains}", "|");
 $trusted-list: str-to-list("#{$excluded_domains}", "|");
 $risky-list: str-to-list("#{$risky_domains}", "|");
@@ -20,60 +20,74 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   @if $selector != "" { #{$selector} { @content; } }
 }
 
-// 3. Post 内链接图标 (内联 SVG 数据，确保绝对显示)
+// 3. 链接图标逻辑
 .topic-body .cooked {
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not([href^="/"]):not([href^="#"]) {
     
-    // Normal
+    // 强制前置图标 (Default - External)
     &:before {
       content: "";
       display: inline-block;
       margin-right: 0.25em; 
       vertical-align: text-top; 
-      width: 0.85em; height: 0.85em;
+      
+      // 尺寸
+      width: 0.85em;
+      height: 0.85em;
+      
+      // 默认颜色 (灰色)
       background-color: var(--primary-medium);
-      mask-size: contain; mask-repeat: no-repeat; mask-position: center;
-      mask-image: url('data:image/svg+xml;utf-8,<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0-16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z"/></svg>');
+      
+      // Mask 设置
+      mask-size: contain;
+      mask-repeat: no-repeat;
+      mask-position: center;
+      
+      // ✨ 修复：经过 URL 编码的 SVG (External Link)
+      mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
       opacity: 0.7;
     }
 
-    // Internal -> Hide
+    // 内部域名 -> 隐藏
     @include domain-match($internal-list) { &:before { display: none !important; } }
     
-    // Trusted
+    // 受信域名 -> 绿色锁
     @include domain-match($trusted-list) {
       color: var(--success); 
       &:before { 
         background-color: var(--success) !important;
-        mask-image: url('data:image/svg+xml;utf-8,<svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path d="M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z"/></svg>') !important;
+        // ✨ 修复：Lock Icon
+        mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 448 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z'/%3E%3C/svg%3E") !important;
         opacity: 1; 
       }
     }
 
-    // Risky
+    // 风险域名 -> 黄色警告
     @include domain-match($risky-list) {
       color: var(--yellow-600);
       &:before { 
         background-color: var(--yellow-600) !important;
-        mask-image: url('data:image/svg+xml;utf-8,<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>') !important;
+        // ✨ 修复：Triangle Exclamation
+        mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z'/%3E%3C/svg%3E") !important;
         opacity: 1; 
       }
     }
 
-    // Dangerous
+    // 危险域名 -> 红色骷髅
     @include domain-match($dangerous-list) {
       color: var(--danger);
       font-weight: bold;
       &:before { 
         background-color: var(--danger) !important;
-        mask-image: url('data:image/svg+xml;utf-8,<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M416 398.9c58.8-26.1 96-85.1 96-150.9C512 137.3 397.3 48 256 48S0 137.3 0 248c0 65.8 37.2 124.8 96 150.9V424c0 22.1 17.9 40 40 40h72c0 26.5 21.5 48 48 48s48-21.5 48-48h72c22.1 0 40-17.9 40-40V398.9zM192 256c0-17.7 14.3-32 32-32s32 14.3 32 32-14.3 32-32 32-32-14.3-32-32zm128 32c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z"/></svg>') !important;
+        // ✨ 修复：Skull
+        mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M416 398.9c58.8-26.1 96-85.1 96-150.9C512 137.3 397.3 48 256 48S0 137.3 0 248c0 65.8 37.2 124.8 96 150.9V424c0 22.1 17.9 40 40 40h72c0 26.5 21.5 48 48 48s48-21.5 48-48h72c22.1 0 40-17.9 40-40V398.9zM192 256c0-17.7 14.3-32 32-32s32 14.3 32 32-14.3 32-32 32-32-14.3-32-32zm128 32c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z'/%3E%3C/svg%3E") !important;
         opacity: 1; 
       }
     }
   }
 }
 
-// Blocked
+// 屏蔽链接 (Ban Icon)
 .blocked-link {
   color: var(--primary-low-mid);
   text-decoration: line-through;
@@ -87,14 +101,12 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     width: 0.9em; height: 0.9em;
     background-color: var(--primary-low-mid);
     mask-size: contain; mask-repeat: no-repeat; mask-position: center;
-    mask-image: url('data:image/svg+xml;utf-8,<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M367.2 412.5L99.5 144.8C77.1 176.1 64 214.5 64 256c0 106 86 192 192 192c41.5 0 79.9-13.1 111.2-35.5zm45.3-45.3C434.9 335.9 448 297.5 448 256c0-106-86-192-192-192c-41.5 0-79.9 13.1-111.2 35.5L412.5 367.2zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z"/></svg>');
+    // ✨ 修复：Ban Icon
+    mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M367.2 412.5L99.5 144.8C77.1 176.1 64 214.5 64 256c0 106 86 192 192 192c41.5 0 79.9-13.1 111.2-35.5zm45.3-45.3C434.9 335.9 448 297.5 448 256c0-106-86-192-192-192c-41.5 0-79.9 13.1-111.2 35.5L412.5 367.2zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z'/%3E%3C/svg%3E");
   }
 }
 
-// ============================================================
-// Modal Styles
-// ============================================================
-
+// 弹窗样式 (保持 V5 的修复)
 .d-modal.external-link-modal {
   .d-modal__content {
     border-radius: 18px;
@@ -104,11 +116,9 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     margin: 0 auto;
     overflow: hidden;
   }
-
   .d-modal__header { display: none !important; }
   .d-modal__body { padding: 0 !important; }
 
-  // 自定义 Header
   .custom-modal-header {
     position: relative;
     padding: 18px 20px;
@@ -133,7 +143,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       display: flex;
       align-items: center;
       color: var(--tertiary);
-      svg { width: 1.25em; height: 1.25em; display: block; }
+      svg { width: 1.25em; height: 1.25em; display: block; min-width: 1.25em; }
     }
 
     .header-title {
@@ -150,20 +160,17 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       font-weight: 600;
       line-height: 1;
       white-space: nowrap;
-      
       &.normal { background: rgba(var(--tertiary-rgb), 0.1); color: var(--tertiary); }
       &.risky { background: rgba(var(--yellow-600), 0.15); color: var(--yellow-600); }
       &.dangerous { background: rgba(var(--danger-rgb), 0.15); color: var(--danger); }
     }
 
-    // 关闭按钮样式 (手写 Button)
     .header-close-btn {
       position: absolute;
       right: 15px;
       top: 50%;
       transform: translateY(-50%);
       z-index: 10;
-      
       .manual-close {
         background: transparent;
         border: none;
@@ -177,44 +184,24 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        transition: background 0.2s;
-        
-        &:hover { 
-          background: rgba(var(--primary-rgb), 0.05); 
-          color: var(--primary); 
-        }
-        
-        // 强制 SVG 尺寸
-        svg { 
-          width: 14px; 
-          height: 14px; 
-          pointer-events: none;
-        }
+        &:hover { background: rgba(var(--primary-rgb), 0.05); color: var(--primary); }
+        svg { width: 14px; height: 14px; pointer-events: none; }
       }
     }
   }
   
-  // 变色逻辑
   .custom-modal-header {
     &:has(.risky) .header-icon-span { color: var(--yellow-600); }
     &:has(.dangerous) .header-icon-span { color: var(--danger); }
   }
 
-  // Body 内容
-  .modal-body-container {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
+  .modal-body-container { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
   .main-alert-text {
     text-align: center;
     .description { color: var(--primary-medium); font-size: 0.9rem; margin-bottom: 8px; line-height: 1.5; }
     .confirm-question { color: var(--primary); font-weight: 600; font-size: 1rem; margin: 0 0 8px 0; }
     .redirect-hint { font-size: 0.85rem; color: var(--primary-low-mid); margin: 0; }
   }
-
   .url-preview {
     background: var(--primary-very-low);
     color: var(--primary);
@@ -226,7 +213,6 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     text-align: center;
     border: 1px solid rgba(var(--primary-rgb), 0.05);
   }
-
   .report-hint-box {
     display: flex;
     align-items: center;
@@ -236,8 +222,6 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     color: var(--primary-medium);
     svg { color: var(--primary-low-mid); width: 0.9em; height: 0.9em; }
   }
-
-  // Footer
   .d-modal__footer {
     border-top: none;
     background: var(--secondary-very-low);
