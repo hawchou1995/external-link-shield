@@ -7,7 +7,7 @@ $trusted-list: str-to-list("#{$excluded_domains}", "|");
 $risky-list: str-to-list("#{$risky_domains}", "|");
 $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 
-// 2. Mixin
+// 2. Mixin (增强版，增加权重)
 @mixin domain-match($list) {
   $selector: "";
   @each $domain in $list {
@@ -20,38 +20,81 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   @if $selector != "" { #{$selector} { @content; } }
 }
 
-// 3. 链接图标逻辑 (强制前置)
+// 3. 链接图标逻辑 (CSS Specificity Fix)
 .topic-body .cooked {
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not([href^="/"]):not([href^="#"]) {
+    
+    // A. 基础外部链接 (Normal)
     &:before {
       content: "";
       display: inline-block;
       margin-right: 0.25em; 
       vertical-align: text-top; 
+      // 默认颜色和图标
       @include svg-icon(solid, "external-link-alt", var(--primary-medium), 0.85em, 0.85em);
       opacity: 0.7;
     }
-    @include domain-match($internal-list) { &:before { display: none !important; } }
+
+    // B. 内部域名 -> 隐藏图标
+    @include domain-match($internal-list) { 
+      &:before { display: none !important; } 
+    }
+    
+    // C. 受信域名 -> 绿色锁
     @include domain-match($trusted-list) {
       color: var(--success); 
-      &:before { @include svg-icon(solid, "lock", var(--success), 0.85em, 0.85em); opacity: 1; }
+      &:before {
+        // 使用 !important 确保覆盖默认图标
+        @include svg-icon(solid, "lock", var(--success), 0.85em, 0.85em);
+        opacity: 1;
+        mask-image: url('data:image/svg+xml;utf-8,' + map-get($solid, "lock")) !important;
+        background: var(--success) !important;
+      }
     }
+
+    // D. 风险域名 -> 黄色警告
     @include domain-match($risky-list) {
       color: var(--yellow-600);
-      &:before { @include svg-icon(solid, "triangle-exclamation", var(--yellow-600), 0.9em, 0.9em); opacity: 1; }
+      &:before {
+        @include svg-icon(solid, "triangle-exclamation", var(--yellow-600), 0.9em, 0.9em);
+        opacity: 1;
+        mask-image: url('data:image/svg+xml;utf-8,' + map-get($solid, "triangle-exclamation")) !important;
+        background: var(--yellow-600) !important;
+      }
     }
+
+    // E. 危险域名 -> 红色骷髅
     @include domain-match($dangerous-list) {
       color: var(--danger);
       font-weight: bold;
-      &:before { @include svg-icon(solid, "skull", var(--danger), 0.9em, 0.9em); opacity: 1; }
+      &:before {
+        @include svg-icon(solid, "skull", var(--danger), 0.9em, 0.9em);
+        opacity: 1;
+        mask-image: url('data:image/svg+xml;utf-8,' + map-get($solid, "skull")) !important;
+        background: var(--danger) !important;
+      }
     }
   }
 }
 
-.blocked-link { color: var(--primary-low-mid); text-decoration: line-through; cursor: not-allowed; opacity: 0.6; }
+// F. 屏蔽链接 (Blocked Link) - 单独处理
+.blocked-link {
+  color: var(--primary-low-mid);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  opacity: 0.6;
+  &:before {
+    content: "";
+    display: inline-block;
+    margin-right: 0.25em;
+    vertical-align: text-top;
+    // 使用 Ban 图标
+    @include svg-icon(solid, "ban", var(--primary-low-mid), 0.9em, 0.9em);
+  }
+}
 
 // ============================================================
-// 4. Apple Style Modal - Layout Fix
+// 4. Apple Style Modal - Layout Fixes
 // ============================================================
 
 .d-modal.external-link-modal {
@@ -64,36 +107,41 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     overflow: hidden;
   }
 
-  // 隐藏原生
+  // 隐藏原生 Header
   .d-modal__header { display: none !important; }
   .d-modal__body { padding: 0 !important; }
 
   // --- 自定义 Header ---
   .custom-modal-header {
-    position: relative; // 为绝对定位提供上下文
+    position: relative; // 关键：为 absolute 子元素提供定位基准
     padding: 18px 20px;
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.05);
     background: var(--secondary);
     display: flex;
     align-items: center;
-    justify-content: center; // 🌟 核心：让中间的内容绝对居中
+    justify-content: center; // 确保标题内容居中
     min-height: 24px;
 
     // 中间的内容组
     .header-center-content {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       z-index: 1;
+      width: 80%; // 留出空间给关闭按钮
     }
 
-    // 图标 (修复不显示问题)
-    .header-icon {
+    // 图标样式修复
+    .header-icon-span {
+      display: flex;
+      align-items: center;
       color: var(--tertiary);
-      display: flex; // 防止塌陷
+      
       svg { 
-        width: 1.2em !important; // 强制大小
-        height: 1.2em !important;
+        width: 1.2em; 
+        height: 1.2em; 
+        display: block; // 防止 SVG 下方有间隙
       }
     }
 
@@ -123,24 +171,34 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       position: absolute;
       right: 15px;
       top: 50%;
-      transform: translateY(-50%);
-      z-index: 2;
+      transform: translateY(-50%); // 垂直居中
+      z-index: 10; // 确保在最上层
       
       .btn {
         background: transparent;
         color: var(--primary-medium);
         padding: 8px;
         margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
         &:hover { background: rgba(var(--primary-rgb), 0.05); color: var(--primary); }
-        svg { width: 1em; height: 1em; }
+        
+        // 强制 SVG 大小，防止不显示
+        svg { 
+          width: 1em; 
+          height: 1em; 
+          pointer-events: none; // 防止点击图标不触发按钮
+        }
       }
     }
   }
   
   // 变色逻辑
   .custom-modal-header {
-    &:has(.risky) .header-icon { color: var(--yellow-600); }
-    &:has(.dangerous) .header-icon { color: var(--danger); }
+    &:has(.risky) .header-icon-span { color: var(--yellow-600); }
+    &:has(.dangerous) .header-icon-span { color: var(--danger); }
   }
 
   // 内容区域
@@ -151,6 +209,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     gap: 16px;
   }
 
+  // ... (其余部分保持不变) ...
   .main-alert-text {
     text-align: center;
     .description { color: var(--primary-medium); font-size: 0.9rem; margin-bottom: 8px; line-height: 1.5; }
