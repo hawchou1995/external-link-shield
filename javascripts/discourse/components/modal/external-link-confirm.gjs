@@ -28,11 +28,10 @@ export default class ExternalLinkConfirm extends Component {
     return "external-link-alt";
   }
 
-  // 计算警告图标的 CSS 类
-  get iconClass() {
-    if (this.isDangerous) return "danger-icon"; // 需在 CSS 定义颜色
-    if (this.isRisky) return "warning-icon";
-    return "normal-icon";
+  get iconColor() {
+     if (this.isDangerous) return "color: #FF3B30;"; // iOS Red
+     if (this.isRisky) return "color: #FF9500;";     // iOS Orange
+     return "color: #007AFF;";                       // iOS Blue
   }
 
   @action
@@ -50,37 +49,42 @@ export default class ExternalLinkConfirm extends Component {
   copyUrl() {
     navigator.clipboard.writeText(this.args.model.url).then(() => {
        this.toaster.show(i18n(themePrefix("secure_links.copied")), { type: 'success' });
-       // 复制后可以选择关闭弹窗
-       // this.args.closeModal(); 
     });
   }
 
   <template>
+    {{!-- 增加 class 这里的 external-link-modal 是关键 --}}
     <DModal @title={{this.title}} @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
       <:body>
-        <div class="d-modal-body-content">
-          <div style="text-align: center; margin-bottom: 20px;">
-            {{!-- 这里内联样式仅为示例，建议移入 CSS --}}
-            {{dIcon this.titleIcon style=(if this.isDangerous "color: var(--danger); font-size: 3em;" (if this.isRisky "color: var(--yellow-600); font-size: 3em;" "color: var(--primary-medium); font-size: 3em;"))}}
-          </div>
+        {{!-- 这里不需要额外的 padding div，因为 CSS 控制了 --}}
+        
+        {{!-- 大图标区域 --}}
+        <div class="modal-icon-wrapper">
+           {{dIcon this.titleIcon style=(concat "font-size: 3.5em; " this.iconColor)}}
+        </div>
 
-          <p style="font-size: 1.1em; text-align: center;">
-            {{#if this.isDangerous}}
-              {{i18n (themePrefix "secure_links.dangerous_warning")}}
-            {{else if this.isRisky}}
-              {{i18n (themePrefix "secure_links.risky_warning")}}
-            {{else}}
-              {{i18n (themePrefix "secure_links.leaving_confirmation_description_first")}}
-            {{/if}}
-          </p>
+        <p>
+          {{#if this.isDangerous}}
+            {{i18n (themePrefix "secure_links.dangerous_warning")}}
+          {{else if this.isRisky}}
+            {{i18n (themePrefix "secure_links.risky_warning")}}
+          {{else}}
+            {{i18n (themePrefix "secure_links.leaving_confirmation_description_first")}}
+          {{/if}}
+        </p>
 
-          <div style="background: var(--primary-low); padding: 10px; border-radius: 5px; word-break: break-all; margin: 15px 0; font-family: monospace;">
-            {{@model.url}}
-          </div>
+        <div class="url-preview">
+          {{@model.url}}
         </div>
       </:body>
 
       <:footer>
+        <DButton
+          @label="cancel"
+          @action={{@closeModal}}
+          class="btn-flat"
+        />
+
         {{#if this.isDangerous}}
           <DButton
             @label={{themePrefix "secure_links.copy_url"}}
@@ -92,16 +96,10 @@ export default class ExternalLinkConfirm extends Component {
           <DButton
             @label={{themePrefix "secure_links.continue"}}
             @action={{this.proceed}}
-            @icon="external-link-alt"
+            @icon="arrow-right"
             class={{if this.isRisky "btn-warning" "btn-primary"}}
           />
         {{/if}}
-
-        <DButton
-          @label="cancel"
-          @action={{@closeModal}}
-          class="btn-flat"
-        />
       </:footer>
     </DModal>
   </template>
