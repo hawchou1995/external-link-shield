@@ -18,28 +18,22 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     }
   }
   @if $selector != "" {
-    #{$selector} {
-      @content;
-    }
+    #{$selector} { @content; }
   }
 }
 
-// 3. 链接图标逻辑 (Link Icons)
+// 3. 链接图标逻辑 (保持不变，强制前置)
 .topic-body .cooked {
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not([href^="/"]):not([href^="#"]) {
-    
-    // 强制前置图标
     &:before {
       content: "";
       display: inline-block;
       margin-right: 0.25em; 
       vertical-align: text-top; 
       @include svg-icon(solid, "external-link-alt", var(--primary-medium), 0.85em, 0.85em);
-      opacity: 0.7; // 稍微淡一点，优雅
+      opacity: 0.7;
     }
-
     @include domain-match($internal-list) { &:before { display: none !important; } }
-    
     @include domain-match($trusted-list) {
       color: var(--success); 
       &:before {
@@ -47,7 +41,6 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
         opacity: 1;
       }
     }
-
     @include domain-match($risky-list) {
       color: var(--yellow-600);
       &:before {
@@ -55,7 +48,6 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
         opacity: 1;
       }
     }
-
     @include domain-match($dangerous-list) {
       color: var(--danger);
       font-weight: bold;
@@ -75,131 +67,106 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 }
 
 // ============================================================
-// 4. Apple Design Director Style Modal
+// 4. Apple Style Compact Modal
 // ============================================================
 
 .d-modal.external-link-modal {
   
-  // 模态框容器 - iOS 风格
   .d-modal__content {
-    border-radius: 20px; // 大圆角
-    // 毛玻璃效果 (Glassmorphism)
-    background: rgba(var(--secondary-rgb), 0.95); // 确保不透明度够高，防止文字看不清，配合 backdrop
-    backdrop-filter: blur(20px) saturate(180%);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 1px rgba(0,0,0,0.1);
-    border: 1px solid rgba(var(--primary-rgb), 0.05); // 微边框
-    max-width: 400px; // 精致宽度
+    border-radius: 18px;
+    background: var(--secondary);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    max-width: 420px;
     margin: 0 auto;
     overflow: hidden;
   }
 
-  // 头部 (Header)
+  // 隐藏默认 Header
   .d-modal__header {
-    border-bottom: none;
-    padding: 24px 24px 0 24px;
-    justify-content: center;
-    
-    .d-modal__title-text {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--primary);
-      letter-spacing: -0.02em;
-    }
-    // 隐藏默认关闭按钮，保持极简
-    .modal-close { position: absolute; right: 20px; top: 20px; opacity: 0.5; }
+    display: none; // 我们自己写了 header
   }
 
-  // 主体 (Body)
   .d-modal__body {
-    padding: 10px 32px 32px 32px;
-    
+    padding: 24px 24px 20px 24px; // 增加顶部 padding
+
     .modal-body-container {
       display: flex;
       flex-direction: column;
-      align-items: center;
       gap: 16px;
-      text-align: center;
     }
-    
-    // --- 图标容器 (Icon Circle) ---
-    // 解决“空旷”的核心：给图标一个淡色背景圆
-    .modal-icon-wrapper {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%; // 圆形
+
+    // --- 自定义 Header (Icon + Text) ---
+    .custom-header {
       display: flex;
       align-items: center;
-      justify-content: center;
-      margin-top: 8px;
-      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      
-      &:hover { transform: scale(1.05); }
+      justify-content: center; // 居中显示
+      gap: 10px;
+      margin-bottom: 4px;
 
-      // 默认蓝色系
-      background: rgba(0, 122, 255, 0.1); 
-      svg { color: #007AFF; width: 36px; height: 36px; }
+      // 默认样式 (Normal)
+      color: var(--primary);
+      svg { color: var(--tertiary); width: 1.4em; height: 1.4em; } // 蓝色图标
+      .header-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1.2;
+      }
 
-      // 风险状态 (Risky)
+      // 风险样式
       &.risky {
-        background: rgba(255, 149, 0, 0.1);
-        svg { color: #FF9500; }
+        color: var(--yellow-600);
+        svg { color: var(--yellow-600); }
       }
-      // 危险状态 (Dangerous)
+      // 危险样式
       &.dangerous {
-        background: rgba(255, 59, 48, 0.1);
-        svg { color: #FF3B30; }
+        color: var(--danger);
+        svg { color: var(--danger); }
       }
     }
 
-    // 文本排版
-    .disclaimer-text {
-      color: var(--primary-medium);
-      font-size: 0.9rem;
-      line-height: 1.5;
-      margin: 0;
-    }
-
-    .main-alert-text {
+    // 分割线
+    .header-separator {
+      height: 1px;
+      background: rgba(var(--primary-rgb), 0.1);
       width: 100%;
+    }
+
+    // 文本内容
+    .main-alert-text {
+      text-align: center;
+      .disclaimer-text {
+        color: var(--primary-medium);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+      }
       .confirm-question {
-        display: block;
-        font-weight: 600;
-        font-size: 1.05rem;
-        margin-bottom: 6px;
         color: var(--primary);
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0;
       }
-      .redirect-hint {
-        font-size: 0.9rem;
-        color: var(--primary-low-mid);
-      }
-      
-      // 警告框样式
-      .alert-box {
-        background: var(--primary-very-low);
-        padding: 12px;
-        border-radius: 12px;
-        font-size: 0.9rem;
-        font-weight: 500;
+      .warning-text {
+        font-weight: 600;
+        margin: 0;
+        padding: 10px;
+        border-radius: 8px;
         
-        &.dangerous { color: var(--danger); background: rgba(var(--danger-rgb), 0.1); }
-        &.risky { color: var(--yellow-600); background: rgba(var(--yellow-600), 0.1); }
+        &.risky { background: rgba(var(--yellow-600), 0.1); color: var(--yellow-600); }
+        &.dangerous { background: rgba(var(--danger-rgb), 0.1); color: var(--danger); }
       }
     }
 
-    // URL 胶囊
+    // URL 预览
     .url-preview {
       background: var(--primary-very-low);
       color: var(--primary-medium);
-      padding: 10px 16px;
-      border-radius: 10px;
-      font-family: "SF Mono", "Menlo", monospace; // 等宽字体
-      font-size: 0.8rem;
-      line-height: 1.3;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.85rem;
       word-break: break-all;
-      width: 100%;
-      box-sizing: border-box;
-      border: 1px solid rgba(var(--primary-rgb), 0.03);
+      text-align: center;
+      border: 1px solid rgba(var(--primary-rgb), 0.05);
     }
 
     // 举报提示
@@ -208,65 +175,31 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       align-items: center;
       justify-content: center;
       gap: 6px;
-      margin-top: 4px;
-      
-      svg { color: var(--danger); width: 0.85em; height: 0.85em; }
+      svg { color: var(--danger); width: 0.9em; height: 0.9em; }
       span { 
-        font-size: 0.75rem; 
-        color: var(--primary-medium);
-        font-weight: 500;
+        font-size: 0.8rem; 
+        color: var(--primary-medium); 
       }
     }
   }
 
-  // 底部按钮 (Footer)
+  // Footer
   .d-modal__footer {
-    // 移除边框，使用 iOS 风格的 Action Sheet 布局
-    border-top: none; 
-    padding: 0 24px 24px 24px;
+    border-top: none;
+    background: var(--secondary-very-low);
+    padding: 16px 24px;
     display: flex;
-    flex-direction: column-reverse; // 手机上“取消”在下
     gap: 12px;
-    background: transparent;
-
-    @media (min-width: 500px) {
-      flex-direction: row; // 桌面端并排
-      justify-content: space-between;
-      
-      // 让“取消”按钮在左，“继续”按钮在右并占满
-      .btn { flex: 1; }
-    }
+    justify-content: flex-end; // 按钮靠右
 
     .btn {
-      border-radius: 12px; // 更圆润的按钮
-      height: 44px; // 更高的点击区域
+      border-radius: 8px;
       font-weight: 600;
-      font-size: 0.95rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.1s;
+      padding: 8px 16px;
       
-      &:active { transform: scale(0.98); }
-
-      // 幽灵按钮 (取消)
-      &.btn-flat {
-        background: rgba(var(--primary-rgb), 0.05);
-        color: var(--primary);
-        &:hover { background: rgba(var(--primary-rgb), 0.1); }
-      }
-
-      // 主按钮 (继续)
-      &.btn-primary {
-        background: #007AFF;
-        color: #ffffff;
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
-        &:hover { background: #006ce6; }
-      }
-
-      // 危险/风险按钮
-      &.btn-danger { background: #FF3B30; color: white; box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3); }
-      &.btn-warning { background: #FF9500; color: white; box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3); }
+      &.btn-primary { background: #007AFF; color: #fff; }
+      &.btn-danger { background: #FF3B30; color: #fff; }
+      &.btn-warning { background: #FF9500; color: #fff; }
     }
   }
 }
