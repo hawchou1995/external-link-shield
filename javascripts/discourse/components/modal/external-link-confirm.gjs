@@ -5,8 +5,10 @@ import DButton from "discourse/components/d-button";
 import { i18n } from "discourse-i18n";
 import { inject as service } from "@ember/service";
 import { htmlSafe } from "@ember/template";
-import { on } from "@ember/modifier"; // 关键引入
+import { on } from "@ember/modifier";
 
+// SVG Icons (带 fill=currentColor 以便 CSS 控制，或者直接写死颜色)
+// 这里直接写死颜色以确保最稳定的显示
 const SVGS = {
   normal: '<svg viewBox="0 0 512 512" style="width:100%;height:100%;fill:#2196F3"><path d="M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z"/></svg>',
   risky: '<svg viewBox="0 0 512 512" style="width:100%;height:100%;fill:#D97706"><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>',
@@ -83,7 +85,7 @@ export default class ExternalLinkConfirm extends Component {
           <p class="desc">{{this.description}}</p>
           
           {{#if this.isNormal}}
-            <p style="font-weight:bold; margin-bottom: 8px">
+            <p style="font-weight:bold; margin-bottom: 12px; font-size: 0.95rem;">
               {{i18n (themePrefix "secure_links.leaving_confirmation_question")}}
             </p>
           {{/if}}
@@ -92,8 +94,8 @@ export default class ExternalLinkConfirm extends Component {
 
           {{#unless this.isDangerous}}
             <div class="report-hint">
-              <span style="width:1em;height:1em;display:inline-block;vertical-align:-2px">{{this.flagSvg}}</span>
-              {{i18n (themePrefix "secure_links.leaving_confirmation_report_hint")}}
+              {{this.flagSvg}}
+              <span>{{i18n (themePrefix "secure_links.leaving_confirmation_report_hint")}}</span>
             </div>
           {{/unless}}
         </div>
