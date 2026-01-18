@@ -5,6 +5,8 @@ import DButton from "discourse/components/d-button";
 import { i18n } from "discourse-i18n";
 import { inject as service } from "@ember/service";
 import { htmlSafe } from "@ember/template";
+// 🌟 核心修复：引入 on 修饰符，否则 JS 会崩溃
+import { on } from "@ember/modifier";
 
 // SVG 常量 (硬编码，颜色已内置)
 const ICONS = {
@@ -28,7 +30,6 @@ export default class ExternalLinkConfirm extends Component {
   get isRisky() { return this.level === 'risky'; }
   get isNormal() { return this.level === 'normal'; }
 
-  // 文本
   get title() { return i18n(themePrefix("secure_links.leaving_confirmation_title")); }
   get badgeText() {
     if (this.isDangerous) return i18n(themePrefix("secure_links.badge_dangerous"));
@@ -36,19 +37,16 @@ export default class ExternalLinkConfirm extends Component {
     return i18n(themePrefix("secure_links.badge_external"));
   }
   
-  // 按钮文本
   get btnCancel() { return i18n("cancel"); }
   get btnCopy() { return i18n(themePrefix("secure_links.copy_url")); }
   get btnContinue() { return i18n(themePrefix("secure_links.continue")); }
 
-  // 描述文本
   get description() {
     if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_warning"));
     if (this.isRisky) return i18n(themePrefix("secure_links.risky_warning"));
     return i18n(themePrefix("secure_links.leaving_confirmation_disclaimer"));
   }
 
-  // 图标
   get iconSvg() {
     if (this.isDangerous) return htmlSafe(ICONS.dangerous);
     if (this.isRisky) return htmlSafe(ICONS.risky);
@@ -83,6 +81,7 @@ export default class ExternalLinkConfirm extends Component {
             <span class="header-title">{{this.title}}</span>
             <span class="header-badge {{this.level}}">{{this.badgeText}}</span>
           </div>
+          {{!-- 修复：有了 import { on }，这里就不会报错了 --}}
           <button class="close-btn" {{on "click" this.close}} type="button">
             {{this.closeSvg}}
           </button>
