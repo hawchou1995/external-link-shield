@@ -6,7 +6,7 @@ export default apiInitializer((api) => {
   const currentUser = api.container.lookup("service:current-user");
   const modal = api.container.lookup("service:modal");
 
-  // 安全分割函数
+  // 安全分割函数 (防止 undefined 报错)
   const safeSplit = (str) => {
     return (str || "").split("|").filter(d => d.trim());
   };
@@ -28,11 +28,10 @@ export default apiInitializer((api) => {
     return false;
   };
 
-  // 弹窗绑定逻辑
   const attachConfirmModal = (element, url, securityLevel) => {
     if (!settings.enable_exit_confirmation && securityLevel === "normal") return;
 
-    // 移除旧监听器，防止重复
+    // 清理旧事件
     if (element._secureLinkHandler) {
       element.removeEventListener("click", element._secureLinkHandler);
     }
@@ -62,7 +61,6 @@ export default apiInitializer((api) => {
       const links = element.querySelectorAll("a[href]");
 
       links.forEach((link) => {
-        // 排除特殊类
         if (
           link.classList.contains("mention") || 
           link.classList.contains("hashtag") || 
@@ -81,7 +79,7 @@ export default apiInitializer((api) => {
           span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
           span.title = url;
           link.replaceWith(span);
-          return; // 结束处理
+          return;
         }
 
         if (isInternal(link)) return;
@@ -89,8 +87,7 @@ export default apiInitializer((api) => {
         // 2. 判定等级
         let securityLevel = "normal";
         if (matchesDomain(url, settings.excluded_domains)) {
-          // Trusted 链接不弹窗，直接放行
-          return; 
+          return; // Trusted 放行
         }
         
         if (matchesDomain(url, settings.dangerous_domains)) {
@@ -101,8 +98,7 @@ export default apiInitializer((api) => {
 
         link.dataset.securityLevel = securityLevel;
 
-        // 3. 用户权限拦截 (Anonymous / TL0)
-        // 匿名
+        // 3. 拦截未登录 / TL0
         if (!currentUser && settings.enable_anonymous_blocking) {
           const loginLink = document.createElement("a");
           loginLink.href = settings.anonymous_redirect_url || "/login";
@@ -114,7 +110,6 @@ export default apiInitializer((api) => {
 
         const trustLevel = currentUser ? currentUser.trust_level : 0;
 
-        // TL0
         if (trustLevel === 0 && settings.enable_tl0_blocking) {
           const tlLink = document.createElement("a");
           tlLink.href = settings.tl0_redirect_url || "#";
@@ -124,7 +119,6 @@ export default apiInitializer((api) => {
           return;
         }
 
-        // TL1 手动查看
         if (trustLevel === 1 && settings.enable_tl1_manual_reveal) {
           const button = document.createElement("a");
           button.href = "#";
