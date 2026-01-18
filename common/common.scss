@@ -29,41 +29,44 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 .topic-body .cooked {
   // --- 基础外部链接样式 (Normal) ---
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link) {
-    // 排除内部链接 (简单的 href 判断，JS 会处理更复杂的内部域名逻辑，这里主要处理视觉)
+    // 排除相对路径 (JS 会处理逻辑，CSS 主要处理视觉)
     &:not([href^="/"]):not([href^="#"]) {
-       // 默认外部链接图标 (Globe/External)
-       &:after {
+       
+       // ✨ 默认外部链接图标 (Globe/External) - 改为出现在【前面】
+       &:before { 
          content: "";
          display: inline-block;
-         margin-left: 0.25em; // 图标放右边通常更符合阅读习惯，也可放左边
+         margin-right: 0.25em; // 图标在左，右边留空
+         vertical-align: text-top; // 稍微调整垂直对齐
          @include svg-icon(solid, "external-link-alt", var(--primary-medium), 0.85em, 0.85em);
        }
     
        // --- 内部域名 (清除图标) ---
+       // ⚠️ 注意：如果你的“内部链接”显示了图标，请确保在插件设置 internal_domains 中添加了你的域名
        @include domain-selector($internal-list) {
-         &:after { display: none; }
+         &:before { display: none; }
        }
     
        // --- 受信任域名 (Trusted) - 绿色锁 ---
        @include domain-selector($trusted-list) {
-         &:after {
+         &:before {
            @include svg-icon(solid, "lock", var(--success), 0.85em, 0.85em);
          }
        }
     
        // --- 风险域名 (Risky) - 黄色警告 ---
        @include domain-selector($risky-list) {
-         color: var(--yellow-600); // 链接文字变黄
-         &:after {
+         color: var(--yellow-600); 
+         &:before {
            @include svg-icon(solid, "triangle-exclamation", var(--yellow-600), 0.9em, 0.9em);
          }
        }
     
        // --- 危险域名 (Dangerous) - 红色骷髅 ---
        @include domain-selector($dangerous-list) {
-         color: var(--danger); // 链接文字变红
+         color: var(--danger); 
          font-weight: bold;
-         &:after {
+         &:before {
            @include svg-icon(solid, "skull", var(--danger), 0.9em, 0.9em);
          }
        }
