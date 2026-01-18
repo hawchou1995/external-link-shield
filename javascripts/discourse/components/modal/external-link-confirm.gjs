@@ -15,60 +15,30 @@ export default class ExternalLinkConfirm extends Component {
   get isRisky() { return this.level === 'risky'; }
   get isNormal() { return !this.isDangerous && !this.isRisky; }
 
-  // --- 文本 Getters (解决严格模式下 themePrefix 无法在模板中使用的问题) ---
+  // --- 文本 Getters ---
   get title() {
     if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_title"));
     if (this.isRisky) return i18n(themePrefix("secure_links.risky_title"));
     return i18n(themePrefix("secure_links.leaving_confirmation_title"));
   }
 
-  get disclaimerText() {
-    return i18n(themePrefix("secure_links.leaving_confirmation_disclaimer"));
-  }
-
-  get questionText() {
-    return i18n(themePrefix("secure_links.leaving_confirmation_question"));
-  }
-
-  get destinationText() {
-    return i18n(themePrefix("secure_links.leaving_confirmation_destination"));
-  }
-
-  get dangerousWarningText() {
-    return i18n(themePrefix("secure_links.dangerous_warning"));
-  }
-
-  get riskyWarningText() {
-    return i18n(themePrefix("secure_links.risky_warning"));
-  }
-
-  get reportHintText() {
-    return i18n(themePrefix("secure_links.leaving_confirmation_report_hint"));
-  }
-
-  get copyUrlLabel() {
-    return i18n(themePrefix("secure_links.copy_url"));
-  }
-
-  get continueLabel() {
-    return i18n(themePrefix("secure_links.continue"));
-  }
+  get disclaimerText() { return i18n(themePrefix("secure_links.leaving_confirmation_disclaimer")); }
+  get questionText() { return i18n(themePrefix("secure_links.leaving_confirmation_question")); }
+  get destinationText() { return i18n(themePrefix("secure_links.leaving_confirmation_destination")); }
+  get dangerousWarningText() { return i18n(themePrefix("secure_links.dangerous_warning")); }
+  get riskyWarningText() { return i18n(themePrefix("secure_links.risky_warning")); }
+  get reportHintText() { return i18n(themePrefix("secure_links.leaving_confirmation_report_hint")); }
+  
+  // 按钮文本
+  get copyUrlLabel() { return i18n(themePrefix("secure_links.copy_url")); }
+  get continueLabel() { return i18n(themePrefix("secure_links.continue")); }
+  get cancelLabel() { return i18n("cancel"); } // 使用 Discourse 核心自带的取消翻译
 
   // --- 样式与图标 ---
-  get iconColor() {
-     if (this.isDangerous) return "#FF3B30"; // Red
-     if (this.isRisky) return "#FF9500";     // Orange
-     return "#007AFF";                       // Blue
-  }
-
   get titleIcon() {
     if (this.isDangerous) return "skull";
     if (this.isRisky) return "triangle-exclamation";
     return "external-link-alt";
-  }
-
-  get iconStyle() {
-    return `font-size: 2.5em; color: ${this.iconColor};`;
   }
 
   // --- 动作 ---
@@ -95,12 +65,12 @@ export default class ExternalLinkConfirm extends Component {
       <:body>
         <div class="modal-body-container">
           
-          {{!-- 1. 顶部图标 --}}
-          <div class="modal-icon-wrapper">
-             {{dIcon this.titleIcon style=this.iconStyle}}
+          {{!-- 1. 顶部图标 (图标样式交由 CSS 控制，这里只负责渲染结构) --}}
+          <div class="modal-icon-wrapper {{this.level}}">
+             {{dIcon this.titleIcon}}
           </div>
 
-          {{!-- 2. 普通外链的免责声明 (仅 Normal 显示) --}}
+          {{!-- 2. 普通外链的免责声明 --}}
           {{#if this.isNormal}}
             <p class="disclaimer-text">
               {{this.disclaimerText}}
@@ -110,14 +80,21 @@ export default class ExternalLinkConfirm extends Component {
           {{!-- 3. 核心提示文本 --}}
           <div class="main-alert-text">
             {{#if this.isDangerous}}
-              {{this.dangerousWarningText}}
-            {{else if this.isRisky}}
-              {{this.riskyWarningText}}
-            {{else}}
+              <div class="alert-box dangerous">
+                {{this.dangerousWarningText}}
+              </div>
+            {{/if}}
+            
+            {{#if this.isRisky}}
+              <div class="alert-box risky">
+                {{this.riskyWarningText}}
+              </div>
+            {{/if}}
+
+            {{#if this.isNormal}}
                <span class="confirm-question">{{this.questionText}}</span>
                <div class="redirect-hint">
                  {{this.destinationText}}
-                 {{dIcon "arrow-down"}}
                </div>
             {{/if}}
           </div>
@@ -127,7 +104,7 @@ export default class ExternalLinkConfirm extends Component {
             {{@model.url}}
           </div>
 
-          {{!-- 5. 举报提示 (使用 unless 替代 not) --}}
+          {{!-- 5. 举报提示 --}}
           {{#unless this.isDangerous}}
             <div class="report-hint-box">
               {{dIcon "flag"}}
@@ -140,21 +117,21 @@ export default class ExternalLinkConfirm extends Component {
 
       <:footer>
         <DButton
-          @label="cancel"
+          @translatedLabel={{this.cancelLabel}} 
           @action={{@closeModal}}
           class="btn-flat"
         />
 
         {{#if this.isDangerous}}
           <DButton
-            @label={{this.copyUrlLabel}}
+            @translatedLabel={{this.copyUrlLabel}}
             @action={{this.copyUrl}}
             @icon="copy"
             class="btn-danger"
           />
         {{else}}
           <DButton
-            @label={{this.continueLabel}}
+            @translatedLabel={{this.continueLabel}}
             @action={{this.proceed}}
             @icon="arrow-right"
             class={{if this.isRisky "btn-warning" "btn-primary"}}
