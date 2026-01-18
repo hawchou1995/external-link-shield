@@ -19,25 +19,24 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   @if $selector != "" { #{$selector} { @content; } }
 }
 
-// 3. 链接图标逻辑 (Background Image 方案)
+// 3. 链接图标逻辑 (Background Image 方案 - 稳如老狗版)
 .topic-body .cooked {
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not([href^="/"]):not([href^="#"]) {
     
-    // 强制前置图标容器
+    // 强制前置图标容器 (Default: External Link 灰色)
     &:before {
       content: "";
       display: inline-block !important;
       margin-right: 4px;
-      vertical-align: middle;
+      vertical-align: middle; // 垂直居中修正
       width: 14px;
       height: 14px;
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
       opacity: 0.8;
-      
-      // 默认: 灰色 External Link (Color: #888888)
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23888888' d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
+      // 灰色图标
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23888888' d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
     }
 
     // 内部域名 -> 隐藏
@@ -86,12 +85,14 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     vertical-align: middle;
     width: 14px; height: 14px;
     background-size: contain; background-repeat: no-repeat; background-position: center;
-    // 灰色 Ban Icon
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23888888' d='M367.2 412.5L99.5 144.8C77.1 176.1 64 214.5 64 256c0 106 86 192 192 192c41.5 0 79.9-13.1 111.2-35.5zm45.3-45.3C434.9 335.9 448 297.5 448 256c0-106-86-192-192-192c-41.5 0-79.9 13.1-111.2 35.5L412.5 367.2zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z'/%3E%3C/svg%3E");
   }
 }
 
-// Modal Styles
+// ============================================================
+// Modal Styles (修复圆角和布局)
+// ============================================================
+
 .d-modal.external-link-modal {
   .d-modal__content {
     border-radius: 18px;
@@ -101,6 +102,8 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     margin: 0 auto;
     overflow: hidden;
   }
+  
+  // 隐藏原生 Header
   .d-modal__header { display: none !important; }
   .d-modal__body { padding: 0 !important; }
 
@@ -114,7 +117,9 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     align-items: center;
     justify-content: center;
     min-height: 24px;
-    border-radius: 18px 18px 0 0;
+    
+    // 🌟 修复：顶部圆角补全
+    border-radius: 18px 18px 0 0; 
 
     .header-center-content {
       display: flex;
@@ -125,11 +130,13 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       width: 80%;
     }
 
+    // 图标样式
     .header-icon-span {
       display: flex;
       align-items: center;
       color: var(--tertiary);
-      svg { width: 1.25em; height: 1.25em; display: block; }
+      // 防止 SVG 塌陷
+      svg { width: 1.25em; height: 1.25em; display: block; min-width: 1.25em; }
     }
 
     .header-title {
@@ -174,6 +181,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
         justify-content: center;
         border-radius: 50%;
         &:hover { background: rgba(var(--primary-rgb), 0.05); color: var(--primary); }
+        // 确保 X 图标有尺寸
         svg { width: 14px; height: 14px; pointer-events: none; }
       }
     }
@@ -185,6 +193,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   }
 
   .modal-body-container { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  
   .main-alert-text {
     text-align: center;
     .description { color: var(--primary-medium); font-size: 0.9rem; margin-bottom: 8px; line-height: 1.5; }
