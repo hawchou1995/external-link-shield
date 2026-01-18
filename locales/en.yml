@@ -1,30 +1,41 @@
 en:
   theme_metadata:
-    description: "External Link Shield with 6-level security classification and User Trust Level controls."
+    description: "External Link Shield with 6-level security classification."
     settings:
-      risky_domains: "List of domains considered risky"
-      dangerous_domains: "List of dangerous domains"
-      blocked_domains: "List of blocked domains"
+      risky_domains: "Risky domains list"
+      dangerous_domains: "Dangerous domains list"
+      blocked_domains: "Blocked domains list"
       
   secure_links:
-    # --- 按钮与通用 ---
     continue: "Continue to external site"
     copy_url: "Copy URL"
     copied: "URL Copied!"
     
-    # --- 权限控制提示 (已恢复) ---
+    # 登录/等级限制提示
     login_to_view: "[Login to view link]"
     first_trust_level_to_view: "[Trust Level 1 required]"
-    click_to_view: "[Click to view link]"
+    click_to_view: "[View Link]"
     
-    # --- 弹窗文案 ---
-    leaving_confirmation_title: "You are leaving our site"
-    leaving_confirmation_description_first: "This link will take you to an external website."
+    # --- 弹窗文案 (增强版) ---
+    leaving_confirmation_title: "Opening External Link"
     
-    risky_title: "Suspicious Link Warning"
-    risky_warning: "⚠️ Warning: The link you clicked is categorized as potentially risky. Please proceed with caution."
+    # 1. 免责声明 (小字)
+    leaving_confirmation_disclaimer: "This link leads to a third-party website. We are not responsible for the content or privacy practices of external sites."
     
-    dangerous_title: "Dangerous Link Blocked"
-    dangerous_warning: "☠️ Security Alert: This link has been flagged as dangerous. Direct access is disabled."
+    # 2. 核心提问 (加粗)
+    leaving_confirmation_question: "Are you sure you want to proceed?"
+    
+    # 3. 引导文案
+    leaving_confirmation_destination: "You will be redirected to:"
+    
+    # 4. 举报提示 (底部)
+    leaving_confirmation_report_hint: "If this link is suspicious or harmful, please flag the post!"
+
+    # 风险/危险提示
+    risky_title: "Suspicious Link"
+    risky_warning: "⚠️ Caution: This link has been flagged as potentially risky."
+    
+    dangerous_title: "Malicious Link"
+    dangerous_warning: "☠️ Security Alert: This link is dangerous and has been blocked."
     
     blocked_text: "Blocked Link"
