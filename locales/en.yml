@@ -1,27 +1,30 @@
 en:
   theme_metadata:
-    description: "External Link Shield with 6-level security classification."
+    description: "External Link Shield with 6-level security classification and User Trust Level controls."
     settings:
-      risky_domains: "List of domains considered risky (Warning icon + Warning modal)"
-      dangerous_domains: "List of dangerous domains (Skull icon + Copy only)"
-      blocked_domains: "List of blocked domains (Link text replaced)"
+      risky_domains: "List of domains considered risky"
+      dangerous_domains: "List of dangerous domains"
+      blocked_domains: "List of blocked domains"
       
   secure_links:
+    # --- 按钮与通用 ---
     continue: "Continue to external site"
     copy_url: "Copy URL"
     copied: "URL Copied!"
     
-    # Normal Domains
+    # --- 权限控制提示 (已恢复) ---
+    login_to_view: "[Login to view link]"
+    first_trust_level_to_view: "[Trust Level 1 required]"
+    click_to_view: "[Click to view link]"
+    
+    # --- 弹窗文案 ---
     leaving_confirmation_title: "You are leaving our site"
     leaving_confirmation_description_first: "This link will take you to an external website."
     
-    # Risky Domains
     risky_title: "Suspicious Link Warning"
     risky_warning: "⚠️ Warning: The link you clicked is categorized as potentially risky. Please proceed with caution."
     
-    # Dangerous Domains
     dangerous_title: "Dangerous Link Blocked"
-    dangerous_warning: "☠️ Security Alert: This link has been flagged as dangerous (phishing or malware). Direct access is disabled for your safety."
+    dangerous_warning: "☠️ Security Alert: This link has been flagged as dangerous. Direct access is disabled."
     
-    # Blocked Domains (Text replacement)
     blocked_text: "Blocked Link"
