@@ -1,82 +1,85 @@
 @import "str-to-list";
 @import "svg-icon-mixins";
 
-// External Links
-
+// 1. 读取所有配置列表
 $internal-list: str-to-list("#{$internal_domains}", "|");
-$excluded-list: str-to-list("#{$excluded_domains}", "|");
+$trusted-list: str-to-list("#{$excluded_domains}", "|");
+$risky-list: str-to-list("#{$risky_domains}", "|");
+$dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 
-// EXTERNAL SELECTOR
-// Exclude internal/CDN domains AND excluded domains
-$external-selector: "a[href*='//']:not([href^='/'])";
-@each $domain in $internal-list {
-  $d: str-slice($domain, 1);
-  @if $d != "" { $external-selector: #{$external-selector} + ":not([href*='#{$d}'])"; }
-}
-@each $domain in $excluded-list {
-  $d: str-slice($domain, 1);
-  @if $d != "" { $external-selector: #{$external-selector} + ":not([href*='#{$d}'])"; }
-}
-
-// TRUSTED SELECTOR
-// Targets only the domains specifically listed in settings
-$trusted-selector: "";
-@each $link in $excluded-list {
-  $trimmed: str-slice($link, 1);
-  @if $trimmed != "" {
-    @if $trusted-selector != "" { $trusted-selector: $trusted-selector + ", "; }
-    $trusted-selector: $trusted-selector + "a[href*='#{$trimmed}']";
+// 2. 核心 Mixin：根据域名列表生成 CSS 选择器
+@mixin domain-selector($list) {
+  $selector: "";
+  @each $domain in $list {
+    $trimmed: str-slice($domain, 1);
+    @if $trimmed != "" {
+      @if $selector != "" { $selector: $selector + ", "; }
+      $selector: $selector + "a[href*='#{$trimmed}']";
+    }
+  }
+  // 输出选择器内容
+  @if $selector != "" {
+    #{$selector} {
+      @content;
+    }
   }
 }
 
+// 3. 样式定义
 .topic-body .cooked {
-  // Unknown external links
-  #{$external-selector} {
-    &:before {
-      content: "";
-      display: inline-block;
-      margin-right: 0.25em;
-      vertical-align: text-top;
-      @include svg-icon(solid, arrow-up-right-from-square, currentColor, 1em, 1em);
-    }
-  }
-
-  // Trusted external links
-  @if $trusted-selector != "" {
-    #{$trusted-selector} {
-      &:before {
-        content: "";
-        display: inline-block;
-        margin-right: 0.25em;
-        vertical-align: text-top;
-        @include svg-icon(solid, lock, var(--success), 1em, 1em);
-      }
+  // --- 基础外部链接样式 (Normal) ---
+  a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link) {
+    // 排除内部链接 (简单的 href 判断，JS 会处理更复杂的内部域名逻辑，这里主要处理视觉)
+    &:not([href^="/"]):not([href^="#"]) {
+       // 默认外部链接图标 (Globe/External)
+       &:after {
+         content: "";
+         display: inline-block;
+         margin-left: 0.25em; // 图标放右边通常更符合阅读习惯，也可放左边
+         @include svg-icon(solid, "external-link-alt", var(--primary-medium), 0.85em, 0.85em);
+       }
+    
+       // --- 内部域名 (清除图标) ---
+       @include domain-selector($internal-list) {
+         &:after { display: none; }
+       }
+    
+       // --- 受信任域名 (Trusted) - 绿色锁 ---
+       @include domain-selector($trusted-list) {
+         &:after {
+           @include svg-icon(solid, "lock", var(--success), 0.85em, 0.85em);
+         }
+       }
+    
+       // --- 风险域名 (Risky) - 黄色警告 ---
+       @include domain-selector($risky-list) {
+         color: var(--yellow-600); // 链接文字变黄
+         &:after {
+           @include svg-icon(solid, "triangle-exclamation", var(--yellow-600), 0.9em, 0.9em);
+         }
+       }
+    
+       // --- 危险域名 (Dangerous) - 红色骷髅 ---
+       @include domain-selector($dangerous-list) {
+         color: var(--danger); // 链接文字变红
+         font-weight: bold;
+         &:after {
+           @include svg-icon(solid, "skull", var(--danger), 0.9em, 0.9em);
+         }
+       }
     }
   }
 }
 
-// Confirmation Modal
-
-.external-link-modal {
-  &__disclaimer {
-    margin-top: 0;
-  }
-  &__confirmation {
-    &-title,
-    &-subtitle {
-      display: block;
-    }
-    &-title {
-      font-weight: 600;
-      margin-bottom: 0.25em;
-    }
-  }
-  &__url {
-    overflow-wrap: anywhere;
-  }
-  &__report-hint {
-    margin-top: 0.5em;
-    font-size: var(--font-down-2);
-    color: var(--primary-high);
+// 4. 屏蔽链接样式 (Blocked)
+.blocked-link {
+  color: var(--primary-low-mid);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  font-size: 0.9em;
+  
+  &:hover {
+    text-decoration: line-through;
+    color: var(--primary-low-mid);
   }
 }
