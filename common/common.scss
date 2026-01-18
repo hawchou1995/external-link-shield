@@ -18,13 +18,9 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   @if $selector != "" { #{$selector} { @content; } }
 }
 
-// ============================================================
-// 1. 帖子链接图标 (Post Links)
-// ============================================================
+// 1. Post Links Icons
 .topic-body .cooked {
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not(.restricted-link-login):not(.restricted-link-tl0):not(.secure-links-reveal):not([href^="/"]):not([href^="#"]) {
-    
-    // 默认：普通外链 (蓝色)
     &:before {
       content: "";
       display: inline-block !important;
@@ -33,13 +29,10 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       vertical-align: middle;
       background-size: contain; background-repeat: no-repeat;
       opacity: 0.8;
+      // Blue External
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%232196F3' d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
     }
-
-    // 1. 内部域名 -> 隐藏图标
     @include domain-match($internal-list) { &:before { display: none !important; } }
-
-    // 2. 受信域名 -> 绿色锁
     @include domain-match($trusted-list) {
       color: var(--success);
       &:before {
@@ -47,8 +40,6 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 448 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23008A00' d='M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z'/%3E%3C/svg%3E") !important;
       }
     }
-
-    // 3. 风险域名 -> 黄色警告
     @include domain-match($risky-list) {
       color: var(--yellow-600);
       &:before {
@@ -56,8 +47,6 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D97706' d='M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z'/%3E%3C/svg%3E") !important;
       }
     }
-
-    // 4. 危险域名 -> 红色骷髅
     @include domain-match($dangerous-list) {
       color: var(--danger);
       font-weight: bold;
@@ -69,7 +58,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   }
 }
 
-// 5. 屏蔽链接 (Blocked - Gray Ban)
+// 5. Blocked Links
 .blocked-link {
   color: var(--primary-low-mid);
   text-decoration: line-through;
@@ -86,9 +75,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   }
 }
 
-// ============================================================
-// 弹窗样式 (Compact & Right Aligned)
-// ============================================================
+// Modal Styles
 .d-modal.external-link-modal {
   .d-modal__content {
     border-radius: 12px;
@@ -98,14 +85,13 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     overflow: hidden;
   }
 
-  // 隐藏原生标题
   .d-modal__header, .d-modal__body { display: none !important; padding: 0 !important; }
   .d-modal__body { padding: 0 !important; }
 
-  // 自定义 Header
+  // Custom Header
   .custom-header {
     position: relative;
-    padding: 14px 16px; // 紧凑
+    padding: 14px 16px; 
     background: var(--secondary);
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.05);
     display: flex;
@@ -121,7 +107,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       svg { width: 100%; height: 100%; } 
     }
     
-    .header-title { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+    .header-title { font-size: 1rem; font-weight: 700; color: var(--primary); }
     
     .header-badge {
       font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; line-height: 1.2;
@@ -139,13 +125,19 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     }
   }
 
-  .modal-body { padding: 16px 20px; text-align: center; }
+  // Renamed Body Class
+  .shield-modal-body { 
+    padding: 16px 20px; 
+    text-align: center; 
+    display: block !important; // 强制显示
+    color: var(--primary); // 确保文字有颜色
+  }
   
   .desc { margin-bottom: 12px; color: var(--primary-medium); font-size: 0.9rem; line-height: 1.4; }
   
   .url-box { 
     background: var(--primary-very-low); 
-    color: var(--primary); // 确保有颜色
+    color: var(--primary); 
     padding: 8px 12px; 
     border-radius: 6px; 
     font-family: monospace; 
@@ -162,23 +154,23 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     svg { width: 0.9em; height: 0.9em; }
   }
   
-  // Footer - 强制右对齐
-  .modal-footer {
+  // Footer - Renamed & Forced Right
+  .shield-modal-footer {
     display: flex;
-    justify-content: flex-end !important; // 核心：靠右
+    justify-content: flex-end !important;
     align-items: center;
     gap: 10px;
     padding: 12px 16px;
     background: var(--secondary-very-low);
-    width: 100%; // 占满宽度
-    box-sizing: border-box; // 防止溢出
+    width: 100%;
+    box-sizing: border-box;
     
     .btn { 
       border-radius: 6px; 
       font-weight: 600; 
       padding: 6px 14px;
       font-size: 0.9rem;
-      margin: 0; // 去除默认 Margin
+      margin: 0;
     }
     
     .btn-primary { background: #2196F3; color: white; }
