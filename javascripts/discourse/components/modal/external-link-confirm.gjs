@@ -15,19 +15,16 @@ export default class ExternalLinkConfirm extends Component {
   get isRisky() { return this.level === 'risky'; }
   get isNormal() { return !this.isDangerous && !this.isRisky; }
 
-  // --- 文本 Getters ---
-  get title() {
-    return i18n(themePrefix("secure_links.leaving_confirmation_title"));
-  }
+  // --- 文本 ---
+  get title() { return i18n(themePrefix("secure_links.leaving_confirmation_title")); }
 
-  // ✨ 新增：徽章文本 (Badge Text)
+  // 徽章文本 (Badge)
   get badgeText() {
-    if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_title")); // "危险链接"
-    if (this.isRisky) return i18n(themePrefix("secure_links.risky_title"));       // "可疑链接"
-    return i18n(themePrefix("secure_links.external_label"));                      // "外部链接" (需在yml补充)
+    if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_title")); 
+    if (this.isRisky) return i18n(themePrefix("secure_links.risky_title"));       
+    return i18n(themePrefix("secure_links.external_label"));                      
   }
 
-  // 描述文本
   get descriptionText() {
     if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_warning"));
     if (this.isRisky) return i18n(themePrefix("secure_links.risky_warning"));
@@ -43,7 +40,7 @@ export default class ExternalLinkConfirm extends Component {
   get continueLabel() { return i18n(themePrefix("secure_links.continue")); }
   get cancelLabel() { return i18n("cancel"); }
 
-  // --- 图标与样式 ---
+  // --- 图标 ---
   get titleIcon() {
     if (this.isDangerous) return "skull";
     if (this.isRisky) return "triangle-exclamation";
@@ -70,30 +67,42 @@ export default class ExternalLinkConfirm extends Component {
   }
 
   <template>
-    <DModal @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
-      
-      {{!-- ✨ 核心修复：使用 <:title> 插槽自定义标题栏 --}}
-      <:title>
-        <div class="custom-modal-title">
-          {{!-- 图标 --}}
-          <span class="title-icon">
-            {{dIcon this.titleIcon}}
-          </span>
-          
-          {{!-- 标题文本 --}}
-          <span class="title-text">{{this.title}}</span>
-          
-          {{!-- 类型徽章 (Pill Badge) --}}
-          <span class="type-badge {{this.level}}">
-            {{this.badgeText}}
-          </span>
-        </div>
-      </:title>
-
+    {{!-- 
+      @title="" 隐藏原生标题
+      我们将在 body 里手动渲染一个更漂亮的 Header
+    --}}
+    <DModal @title="" @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
       <:body>
+        
+        {{!-- ✨ 模拟 Header 开始 --}}
+        <div class="custom-modal-header">
+          <div class="header-left">
+            {{!-- 1. 图标 --}}
+            <span class="header-icon">
+              {{dIcon this.titleIcon}}
+            </span>
+            {{!-- 2. 标题文字 --}}
+            <span class="header-title">{{this.title}}</span>
+            {{!-- 3. 徽章 --}}
+            <span class="type-badge {{this.level}}">
+              {{this.badgeText}}
+            </span>
+          </div>
+          
+          {{!-- 4. 关闭按钮 (X) --}}
+          <div class="header-right">
+             <DButton 
+               @icon="times" 
+               @action={{@closeModal}} 
+               class="btn-flat icon-only close-btn" 
+             />
+          </div>
+        </div>
+        {{!-- ✨ 模拟 Header 结束 --}}
+
         <div class="modal-body-container">
           
-          {{!-- 核心提示文本 --}}
+          {{!-- 描述区 --}}
           <div class="main-alert-text">
             <p class="description">{{this.descriptionText}}</p>
             
@@ -106,7 +115,7 @@ export default class ExternalLinkConfirm extends Component {
             </p>
           </div>
 
-          {{!-- URL 预览胶囊 --}}
+          {{!-- URL 胶囊 --}}
           <div class="url-preview">
             {{@model.url}}
           </div>
