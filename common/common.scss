@@ -1,13 +1,13 @@
 @import "str-to-list";
 @import "svg-icon-mixins";
 
-// 1. 读取配置
+// 1. 读取配置 (保持不变)
 $internal-list: str-to-list("#{$internal_domains}", "|");
 $trusted-list: str-to-list("#{$excluded_domains}", "|");
 $risky-list: str-to-list("#{$risky_domains}", "|");
 $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 
-// 2. Mixin
+// 2. Mixin (保持不变)
 @mixin domain-match($list) {
   $selector: "";
   @each $domain in $list {
@@ -17,12 +17,10 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       $selector: $selector + "&[href*='#{$trimmed}']";
     }
   }
-  @if $selector != "" {
-    #{$selector} { @content; }
-  }
+  @if $selector != "" { #{$selector} { @content; } }
 }
 
-// 3. 链接图标逻辑 (保持不变，强制前置)
+// 3. 链接图标逻辑 (保持不变)
 .topic-body .cooked {
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not([href^="/"]):not([href^="#"]) {
     &:before {
@@ -36,25 +34,16 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     @include domain-match($internal-list) { &:before { display: none !important; } }
     @include domain-match($trusted-list) {
       color: var(--success); 
-      &:before {
-        @include svg-icon(solid, "lock", var(--success), 0.85em, 0.85em);
-        opacity: 1;
-      }
+      &:before { @include svg-icon(solid, "lock", var(--success), 0.85em, 0.85em); opacity: 1; }
     }
     @include domain-match($risky-list) {
       color: var(--yellow-600);
-      &:before {
-        @include svg-icon(solid, "triangle-exclamation", var(--yellow-600), 0.9em, 0.9em);
-        opacity: 1;
-      }
+      &:before { @include svg-icon(solid, "triangle-exclamation", var(--yellow-600), 0.9em, 0.9em); opacity: 1; }
     }
     @include domain-match($dangerous-list) {
       color: var(--danger);
       font-weight: bold;
-      &:before {
-        @include svg-icon(solid, "skull", var(--danger), 0.9em, 0.9em);
-        opacity: 1;
-      }
+      &:before { @include svg-icon(solid, "skull", var(--danger), 0.9em, 0.9em); opacity: 1; }
     }
   }
 }
@@ -67,7 +56,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 }
 
 // ============================================================
-// 4. Apple Style Compact Modal
+// 4. Apple Style Modal - 最终修正版
 // ============================================================
 
 .d-modal.external-link-modal {
@@ -76,96 +65,112 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     border-radius: 18px;
     background: var(--secondary);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    max-width: 420px;
+    max-width: 440px;
     margin: 0 auto;
-    overflow: hidden;
+    overflow: hidden; // 确保圆角
   }
 
-  // 隐藏默认 Header
+  // --- 标题栏 (Header) ---
   .d-modal__header {
-    display: none; // 我们自己写了 header
+    border-bottom: 1px solid rgba(var(--primary-rgb), 0.05); // 极淡分割线
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; // 标题左对齐，关闭按钮右对齐
+    
+    .d-modal__title {
+      flex: 1; // 占据空间
+    }
+
+    // 自定义标题容器
+    .custom-modal-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--primary);
+
+      // 图标
+      .title-icon {
+        display: flex;
+        align-items: center;
+        color: var(--tertiary); // 默认蓝色
+      }
+
+      // 类型徽章 (Pill Badge)
+      .type-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 20px; // 胶囊状
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        line-height: 1;
+        
+        // 普通 (External) - 蓝色背景
+        &.normal {
+          background: rgba(var(--tertiary-rgb), 0.1);
+          color: var(--tertiary);
+        }
+        // 风险 (Risky) - 黄色背景
+        &.risky {
+          background: rgba(var(--yellow-600), 0.15);
+          color: var(--yellow-600);
+        }
+        // 危险 (Dangerous) - 红色背景
+        &.dangerous {
+          background: rgba(var(--danger-rgb), 0.15);
+          color: var(--danger);
+        }
+      }
+    }
+    
+    // 针对不同类型的图标颜色覆写
+    &.risky .title-icon { color: var(--yellow-600); }
+    &.dangerous .title-icon { color: var(--danger); }
   }
 
+  // --- 主体 (Body) ---
   .d-modal__body {
-    padding: 24px 24px 20px 24px; // 增加顶部 padding
-
+    padding: 24px;
+    
     .modal-body-container {
       display: flex;
       flex-direction: column;
       gap: 16px;
     }
 
-    // --- 自定义 Header (Icon + Text) ---
-    .custom-header {
-      display: flex;
-      align-items: center;
-      justify-content: center; // 居中显示
-      gap: 10px;
-      margin-bottom: 4px;
-
-      // 默认样式 (Normal)
-      color: var(--primary);
-      svg { color: var(--tertiary); width: 1.4em; height: 1.4em; } // 蓝色图标
-      .header-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        line-height: 1.2;
-      }
-
-      // 风险样式
-      &.risky {
-        color: var(--yellow-600);
-        svg { color: var(--yellow-600); }
-      }
-      // 危险样式
-      &.dangerous {
-        color: var(--danger);
-        svg { color: var(--danger); }
-      }
-    }
-
-    // 分割线
-    .header-separator {
-      height: 1px;
-      background: rgba(var(--primary-rgb), 0.1);
-      width: 100%;
-    }
-
-    // 文本内容
     .main-alert-text {
-      text-align: center;
-      .disclaimer-text {
+      .description {
         color: var(--primary-medium);
-        font-size: 0.9rem;
+        font-size: 0.95rem;
+        line-height: 1.5;
         margin-bottom: 8px;
       }
       .confirm-question {
         color: var(--primary);
         font-weight: 600;
         font-size: 1rem;
-        margin: 0;
+        margin: 0 0 12px 0;
       }
-      .warning-text {
-        font-weight: 600;
+      .redirect-hint {
+        font-size: 0.85rem;
+        color: var(--primary-low-mid);
+        font-weight: 500;
         margin: 0;
-        padding: 10px;
-        border-radius: 8px;
-        
-        &.risky { background: rgba(var(--yellow-600), 0.1); color: var(--yellow-600); }
-        &.dangerous { background: rgba(var(--danger-rgb), 0.1); color: var(--danger); }
       }
     }
 
-    // URL 预览
+    // URL 胶囊
     .url-preview {
       background: var(--primary-very-low);
-      color: var(--primary-medium);
-      padding: 12px;
-      border-radius: 8px;
-      font-family: monospace;
+      color: var(--primary);
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-family: "SF Mono", "Menlo", monospace;
       font-size: 0.85rem;
       word-break: break-all;
-      text-align: center;
       border: 1px solid rgba(var(--primary-rgb), 0.05);
     }
 
@@ -173,33 +178,32 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     .report-hint-box {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
-      svg { color: var(--danger); width: 0.9em; height: 0.9em; }
-      span { 
-        font-size: 0.8rem; 
-        color: var(--primary-medium); 
-      }
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--primary-medium);
+      svg { color: var(--primary-low-mid); width: 0.9em; height: 0.9em; }
     }
   }
 
-  // Footer
+  // --- 底部 (Footer) ---
   .d-modal__footer {
     border-top: none;
-    background: var(--secondary-very-low);
-    padding: 16px 24px;
+    background: transparent;
+    padding: 0 24px 24px 24px;
     display: flex;
+    justify-content: flex-end;
     gap: 12px;
-    justify-content: flex-end; // 按钮靠右
 
     .btn {
-      border-radius: 8px;
+      border-radius: 10px;
       font-weight: 600;
-      padding: 8px 16px;
+      padding: 10px 18px;
+      margin: 0;
       
-      &.btn-primary { background: #007AFF; color: #fff; }
+      &.btn-primary { background: #007AFF; color: #fff; box-shadow: 0 4px 10px rgba(0, 122, 255, 0.2); }
       &.btn-danger { background: #FF3B30; color: #fff; }
       &.btn-warning { background: #FF9500; color: #fff; }
+      &.btn-flat { color: var(--primary-medium); &:hover { background: rgba(var(--primary-rgb), 0.05); } }
     }
   }
 }
