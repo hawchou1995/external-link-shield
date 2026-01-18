@@ -1,34 +1,30 @@
-
 zh_CN:
   theme_metadata:
     description: "具有6级安全分类的外部链接护盾"
-    settings:
-      risky_domains: "风险域名列表 (警告图标 + 弹窗)"
-      dangerous_domains: "危险域名列表 (骷髅图标 + 仅复制)"
-      blocked_domains: "屏蔽域名列表 (替换为文本)"
-      
+    
   secure_links:
-    continue: "继续前往外部网站"
+    continue: "继续前往"
     copy_url: "复制链接"
     copied: "链接已复制！"
     
+    # 徽章文本 (Badges) - 对应右上角的胶囊
+    external_label: "外部"
+    risky_title: "风险"
+    dangerous_title: "危险"
+    
     # 登录/等级限制
-    login_to_view: "[仅登录后可见链接]"
-    first_trust_level_to_view: "[需信任等级1可见链接]"
+    login_to_view: "[登录后可见]"
+    first_trust_level_to_view: "[需信任等级1可见]"
     click_to_view: "[点击查看链接]"
     
-    # 弹窗文案
-    leaving_confirmation_title: "打开外部链接"
-    leaving_confirmation_disclaimer: "此链接将跳转到外部网站，我们对外部网站的内容概不负责。"
-    leaving_confirmation_question: "确定要打开这个外部网站吗？"
-    leaving_confirmation_destination: "系统将跳转至以下网站"
-    leaving_confirmation_report_hint: "如发现可疑或有害链接，请用旗帜图标举报该帖！"
+    # 弹窗内容
+    leaving_confirmation_title: "即将离开本站"
+    leaving_confirmation_disclaimer: "此链接指向第三方网站，请注意隐私安全。"
+    leaving_confirmation_question: "确定要继续访问吗？"
+    leaving_confirmation_destination: "目标网址："
+    leaving_confirmation_report_hint: "如遇恶意链接，请点击旗帜图标举报！"
 
-    # 风险/危险提示
-    risky_title: "可疑链接警告"
-    risky_warning: "⚠️ 警告：您点击的链接被标记为潜在风险，请谨慎操作。"
-    
-    dangerous_title: "已拦截危险链接"
-    dangerous_warning: "☠️ 安全警报：此链接已被标记为危险（钓鱼或恶意软件），已禁止直接访问。"
-    
+    # 警告文本
+    risky_warning: "警告：此链接被系统标记为潜在风险，请谨慎操作。"
+    dangerous_warning: "拦截：此链接已被标记为恶意网站，已禁止访问。"
     blocked_text: "链接已屏蔽"
