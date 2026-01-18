@@ -10,15 +10,18 @@ export default apiInitializer((api) => {
 
   const matchesDomain = (url, domainString) => {
     if (!url) return false;
-    // 忽略大小写
     const u = url.toLowerCase();
     return safeSplit(domainString).some(d => u.includes(d.trim().toLowerCase()));
   };
 
+  // 内部链接判定
   const isInternal = (link) => {
     try {
       const href = link.getAttribute("href");
-      if (!href || href.startsWith("/") || href.startsWith("#")) return true;
+      if (!href || href.startsWith("#")) return true; // 锚点视为内部
+      // 注意：相对路径 /foo 也是内部，但我们需要让它走下面的逻辑去加 _blank
+      if (href.startsWith("/")) return true; 
+      
       if (link.href.includes(window.location.hostname)) return true;
       if (matchesDomain(link.href, settings.internal_domains)) return true;
     } catch(e) { return false; }
@@ -31,7 +34,8 @@ export default apiInitializer((api) => {
     modal.show(ExternalLinkConfirm, {
       model: {
         url: url,
-        securityLevel: level
+        securityLevel: level,
+        openInNewTab: true // 强制弹窗内的链接也新标签页
       }
     });
   };
@@ -43,7 +47,7 @@ export default apiInitializer((api) => {
       const links = element.querySelectorAll("a[href]");
       
       links.forEach(link => {
-        // 排除特殊元素
+        // 排除干扰项
         if (
           link.classList.contains("mention") || 
           link.classList.contains("lightbox") || 
@@ -53,27 +57,29 @@ export default apiInitializer((api) => {
 
         const url = link.href;
 
-        // --- 1. 屏蔽域名 (Blocked) - 物理销毁 ---
+        // --- 1. 屏蔽域名 (Blocked) ---
         if (matchesDomain(url, settings.blocked_domains)) {
           const span = document.createElement("span");
           span.classList.add("blocked-link"); 
           span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
-          // ⚠️ 没有任何 title 或 data 属性存储 url
           link.replaceWith(span);
           return;
         }
 
         // --- 2. 内部域名 (Internal) ---
-        if (isInternal(link)) return;
+        if (isInternal(link)) {
+          // 🌟 需求实现：内部域名也要新标签页打开
+          link.setAttribute("target", "_blank");
+          link.setAttribute("rel", "noopener noreferrer");
+          return; // 不弹窗，直接放行
+        }
 
         // --- 3. 受信任域名 (Trusted) ---
         if (matchesDomain(url, settings.excluded_domains)) {
           // 强制新标签页
-          if (settings.external_links_in_new_tab) {
-            link.setAttribute("target", "_blank");
-            link.setAttribute("rel", "noopener noreferrer");
-          }
-          return; // CSS 会自动添加绿锁图标
+          link.setAttribute("target", "_blank");
+          link.setAttribute("rel", "noopener noreferrer");
+          return; // CSS 会加绿锁，不弹窗
         }
 
         // --- 4. 判定等级 ---
@@ -81,23 +87,18 @@ export default apiInitializer((api) => {
         if (matchesDomain(url, settings.dangerous_domains)) level = "dangerous";
         else if (matchesDomain(url, settings.risky_domains)) level = "risky";
         
-        // 标记等级供 CSS 使用
         link.dataset.securityLevel = level;
 
-        // --- 5. 登录/权限拦截 (物理销毁原链接) ---
-        
-        // 未登录拦截
+        // --- 5. 登录/权限拦截 ---
         if (!currentUser && settings.enable_anonymous_blocking) {
           const newLink = document.createElement("a");
           newLink.href = settings.anonymous_redirect_url || "/login";
-          newLink.className = "restricted-link-login"; // 继承 CSS 样式
+          newLink.className = "restricted-link-login"; 
           newLink.innerText = i18n(themePrefix("secure_links.login_to_view"));
-          // ⚠️ 这里的 href 已经变成了 /login，原 URL 彻底消失
           link.replaceWith(newLink);
           return;
         }
 
-        // TL0 拦截
         if (currentUser && currentUser.trust_level === 0 && settings.enable_tl0_blocking) {
           const newLink = document.createElement("a");
           newLink.href = settings.tl0_redirect_url || "#";
@@ -107,11 +108,9 @@ export default apiInitializer((api) => {
           return;
         }
 
-        // --- 6. 强制新标签页 (对所有通过检查的链接) ---
-        if (settings.external_links_in_new_tab) {
-          link.setAttribute("target", "_blank");
-          link.setAttribute("rel", "noopener noreferrer");
-        }
+        // --- 6. 强制新标签页 (对剩下的外链) ---
+        link.setAttribute("target", "_blank");
+        link.setAttribute("rel", "noopener noreferrer");
 
         // --- 7. TL1 手动查看 ---
         if (currentUser && currentUser.trust_level === 1 && settings.enable_tl1_manual_reveal) {
@@ -119,16 +118,11 @@ export default apiInitializer((api) => {
           button.href = "javascript:void(0)";
           button.innerText = i18n(themePrefix("secure_links.click_to_view"));
           button.className = "secure-links-reveal";
-          
           button.addEventListener("click", (e) => {
             e.preventDefault();
             const realLink = document.createElement("a");
             realLink.href = url;
-            // 保持新标签页设置
-            if (settings.external_links_in_new_tab) {
-              realLink.setAttribute("target", "_blank");
-              realLink.setAttribute("rel", "noopener noreferrer");
-            }
+            realLink.setAttribute("target", "_blank"); // 恢复后也要新标签
             realLink.innerHTML = link.innerHTML;
             realLink.dataset.securityLevel = level;
             realLink.addEventListener("click", (ev) => openModal(ev, url, level));
