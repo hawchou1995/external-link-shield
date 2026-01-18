@@ -4,3 +4,7 @@
   "license_url": null,
   "component": true
 }
+
+"icons": {
+  "svg_icons": "scss/svg-icons/fontawesome/solid.scss"
+}
