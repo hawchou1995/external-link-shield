@@ -29,10 +29,10 @@ export default class ExternalLinkConfirm extends Component {
   get riskyWarningText() { return i18n(themePrefix("secure_links.risky_warning")); }
   get reportHintText() { return i18n(themePrefix("secure_links.leaving_confirmation_report_hint")); }
   
-  // 按钮文本
+  // 按钮文本 (获取翻译后的字符串)
   get copyUrlLabel() { return i18n(themePrefix("secure_links.copy_url")); }
   get continueLabel() { return i18n(themePrefix("secure_links.continue")); }
-  get cancelLabel() { return i18n("cancel"); } // 使用 Discourse 核心自带的取消翻译
+  get cancelLabel() { return i18n("cancel"); }
 
   // --- 样式与图标 ---
   get titleIcon() {
@@ -65,7 +65,7 @@ export default class ExternalLinkConfirm extends Component {
       <:body>
         <div class="modal-body-container">
           
-          {{!-- 1. 顶部图标 (图标样式交由 CSS 控制，这里只负责渲染结构) --}}
+          {{!-- 1. 顶部图标 (图标样式交由 CSS 控制) --}}
           <div class="modal-icon-wrapper {{this.level}}">
              {{dIcon this.titleIcon}}
           </div>
@@ -116,6 +116,7 @@ export default class ExternalLinkConfirm extends Component {
       </:body>
 
       <:footer>
+        {{!-- 修复：使用 @translatedLabel 防止二次翻译乱码 --}}
         <DButton
           @translatedLabel={{this.cancelLabel}} 
           @action={{@closeModal}}
