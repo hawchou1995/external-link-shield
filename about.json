@@ -2,9 +2,8 @@
   "name": "External Link Shield",
   "about_url": null,
   "license_url": null,
-  "component": true
-}
-
-"icons": {
-  "svg_icons": "scss/svg-icons/fontawesome/solid.scss"
+  "component": true,
+  "icons": {
+    "svg_icons": "scss/svg-icons/fontawesome/solid.scss"
+  }
 }
