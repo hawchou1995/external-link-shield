@@ -10,7 +10,9 @@ export default apiInitializer((api) => {
 
   const matchesDomain = (url, domainString) => {
     if (!url) return false;
-    return safeSplit(domainString).some(d => url.includes(d.trim()));
+    const urlLower = url.toLowerCase();
+    // 忽略大小写匹配
+    return safeSplit(domainString).some(d => urlLower.includes(d.trim().toLowerCase()));
   };
 
   const isInternal = (link) => {
@@ -51,28 +53,27 @@ export default apiInitializer((api) => {
 
         const url = link.href;
 
-        // --- 1. 屏蔽域名 (Blocked) ---
+        // --- 优先级 1: 屏蔽域名 (Blocked) ---
+        // 行为：链接被替换为文本，且不保留原始URL在DOM中
         if (matchesDomain(url, settings.blocked_domains)) {
           const span = document.createElement("span");
-          span.classList.add("blocked-link");
+          span.classList.add("blocked-link"); // CSS 添加 Ban 图标
           span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
-          // ⚠️ 关键修复：不再将 url 放入 title 属性，增加 F12 查找难度
-          // span.title = url; <--- 已移除
+          // ⚠️ 关键：这里不设置 span.title，所以在 F12 中看不到原链接
           link.replaceWith(span);
           return;
         }
 
-        // --- 2. 内部域名 (Internal) ---
+        // --- 优先级 2: 内部域名 (Internal) ---
         if (isInternal(link)) return;
 
-        // --- 3. 受信任域名 (Trusted) ---
-        // 🌟 关键修复：移动到登录检查之前！
-        // 只要是信任域名，无论是否登录，都直接显示绿锁，不拦截
+        // --- 优先级 3: 受信任域名 (Trusted) ---
+        // 🌟 修复：只要是信任域名，直接放行，不进行登录检查
         if (matchesDomain(url, settings.excluded_domains)) {
           return; // CSS 会自动添加绿锁图标
         }
 
-        // --- 4. 判定等级 (Risky / Dangerous / Normal) ---
+        // --- 优先级 4: 判定等级 (Risky / Dangerous / Normal) ---
         let level = "normal";
         if (matchesDomain(url, settings.dangerous_domains)) {
           level = "dangerous";
@@ -81,7 +82,7 @@ export default apiInitializer((api) => {
         }
         link.dataset.securityLevel = level;
 
-        // --- 5. 登录/权限拦截 (仅针对 非内部、非受信任 链接) ---
+        // --- 优先级 5: 登录/权限拦截 (仅针对 非内部、非受信任 链接) ---
         
         // 未登录拦截
         if (!currentUser && settings.enable_anonymous_blocking) {
@@ -124,7 +125,7 @@ export default apiInitializer((api) => {
           return;
         }
 
-        // --- 6. 绑定弹窗 ---
+        // --- 优先级 6: 绑定弹窗 ---
         if (level === "normal" && !settings.enable_exit_confirmation) return;
 
         link.addEventListener("click", (e) => openModal(e, url, level));
