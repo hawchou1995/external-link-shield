@@ -18,11 +18,10 @@ export default class ExternalLinkConfirm extends Component {
   // --- 文本 Getters ---
   get title() { return i18n(themePrefix("secure_links.leaving_confirmation_title")); }
 
-  // ✨ 徽章文本 - 精确对应 6 级分类中的弹窗部分
   get badgeText() {
-    if (this.isDangerous) return i18n(themePrefix("secure_links.badge_dangerous")); // 危险
-    if (this.isRisky) return i18n(themePrefix("secure_links.badge_risky"));         // 风险
-    return i18n(themePrefix("secure_links.badge_external"));                        // 普通/外部
+    if (this.isDangerous) return i18n(themePrefix("secure_links.badge_dangerous")); 
+    if (this.isRisky) return i18n(themePrefix("secure_links.badge_risky"));         
+    return i18n(themePrefix("secure_links.badge_external"));                        
   }
 
   get descriptionText() {
@@ -66,20 +65,24 @@ export default class ExternalLinkConfirm extends Component {
   }
 
   <template>
+    {{!-- 隐藏原生标题 --}}
     <DModal @title="" @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
       <:body>
         
-        {{!-- ✨ 标题栏 (相对定位容器) --}}
+        {{!-- 自定义 Header --}}
         <div class="custom-modal-header">
           
-          {{!-- 1. 绝对居中的标题内容 --}}
+          {{!-- 1. 标题内容 --}}
           <div class="header-center-content">
-             {{dIcon this.titleIcon class="header-icon"}}
+             {{!-- 这里使用 class 来确保图标颜色 --}}
+             <span class="header-icon-span">
+                {{dIcon this.titleIcon}}
+             </span>
              <span class="header-title">{{this.title}}</span>
              <span class="type-badge {{this.level}}">{{this.badgeText}}</span>
           </div>
           
-          {{!-- 2. 绝对定位的关闭按钮 --}}
+          {{!-- 2. 关闭按钮 (X) --}}
           <div class="header-close-btn">
              <DButton 
                @icon="times" 
