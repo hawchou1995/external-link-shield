@@ -1,50 +1,32 @@
+external_links_in_new_tab:
+  default: true
+  description: "Always open external links in a new tab."
+
+enable_exit_confirmation:
+  default: true
+  description: "Show a confirmation modal when a user clicks on an external link (for Normal, Risky, and Dangerous domains)."
+
 internal_domains:
   type: list
   default: ""
-  description: "Your forum and CDN domains (e.g., example.com|example-cdn.com). These will have NO icon and NO modal."
-  
+  description: "Internal Domains: No icon, no confirmation modal. (e.g. your CDN or related sites)"
+
 excluded_domains:
   type: list
-  default: ""
-  description: "Trusted external domains (e.g., youtube.com|google.com). These will show a LOCK icon but skip the modal/shielding."
-  
-enable_anonymous_blocking:
-  type: bool
-  default: true
-  description: "Replace external links for anonymous users with a login prompt."
+  default: "youtube.com|github.com|wikipedia.org"
+  description: "Trusted Domains: Shows a Lock 🔒 icon, skips confirmation modal."
 
-anonymous_redirect_url:
-  type: string
-  default: "/login"
-  description: "URL where anonymous users are redirected when trying to access external links. Leave empty to disable redirection."
-
-enable_tl0_blocking:
-  type: bool
-  default: true
-  description: "Replace external links for TL0 users with a trust-level information link."
-
-tl0_redirect_url:
-  type: string
-  default: ""
-  description: "URL where TL0 users are redirected when click the link. Leave empty to disable redirection."
-
-enable_tl1_manual_reveal:
-  type: bool
-  default: true
-  description: "Require TL1 users to manually reveal external links."
-
-enable_exit_confirmation:
-  type: bool
-  default: true
-  description: "Show an exit confirmation modal when users click external links."
-
-exit_confirmation_continue_icon:
-  type: string
-  default: "arrow-up-right-from-square"
-  description: "Change the exit confirmation modal continue button icon."
-
-svg_icons:
-  default: "arrow-up-right-from-square"
+risky_domains:
   type: list
-  list_type: "compact"
-  description: "List of FontAwesome 6 icons used in this theme component"
+  default: "bit.ly|tinyurl.com|t.co"
+  description: "Risky Domains: Shows a Warning ⚠️ icon, opens a warning modal asking for confirmation."
+
+dangerous_domains:
+  type: list
+  default: "known-phishing-site.com"
+  description: "Dangerous Domains: Shows a Skull ☠️ icon. Modal only allows copying the URL, direct access is disabled."
+
+blocked_domains:
+  type: list
+  default: "spam-site.com"
+  description: "Blocked Domains: Links are replaced with '[Blocked Link]' text and cannot be clicked."
