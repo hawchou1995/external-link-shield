@@ -7,29 +7,46 @@ export default apiInitializer((api) => {
   const modal = api.container.lookup("service:modal");
 
   // 辅助函数：匹配域名
+  // ✨ 修复：不再剥离 http/https，直接检查包含关系
+  // 这样既支持 "google.com" (模糊)，也支持 "https://site.com/vpn" (精确)
   const matchesDomain = (url, domainString) => {
     if (!domainString || !url) return false;
-    const cleanUrl = url.replace(/^https?:\/\//, "");
     const domains = domainString.split("|").filter(d => d.trim());
-    return domains.some(d => cleanUrl.includes(d.trim()));
+    return domains.some(d => url.includes(d.trim()));
   };
 
   // 辅助函数：判断是否为内部链接
   const isInternal = (link) => {
-    // 1. 显式检查 href 属性原始值（解决锚点误判的关键）
+    // 1. 显式检查 href 属性原始值（排除锚点）
     const hrefAttr = link.getAttribute("href");
     if (hrefAttr && (hrefAttr.startsWith("/") || hrefAttr.startsWith("#"))) {
       return true;
     }
-
-    // 2. 检查完整 URL 是否包含当前域名
+    // 2. 检查完整 URL
     const url = link.href;
     if (url.includes(window.location.hostname)) return true;
-    
     // 3. 检查设置中的内部域名
     if (matchesDomain(url, settings.internal_domains)) return true;
     
     return false;
+  };
+
+  // 辅助函数：绑定弹窗事件
+  const attachConfirmModal = (element, url, securityLevel) => {
+    if (!settings.enable_exit_confirmation && securityLevel === "normal") {
+      return;
+    }
+    element.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      modal.show(ExternalLinkConfirm, {
+        model: {
+          url: url,
+          securityLevel: securityLevel,
+          openInNewTab: settings.external_links_in_new_tab
+        }
+      });
+    });
   };
 
   api.decorateCookedElement((element) => {
@@ -37,25 +54,22 @@ export default apiInitializer((api) => {
 
       links.forEach((link) => {
         // 排除 Discourse 特殊元素
-        // 🛡️ 修复核心：新增排除 'anchor' (标题锚点) 和 'onebox' (预览卡片)
         if (
           link.classList.contains("mention") || 
           link.classList.contains("hashtag") || 
           link.classList.contains("lightbox") ||
           link.classList.contains("attachment") ||
-          link.classList.contains("anchor") || // 修复：排除标题旁的锚点
-          link.classList.contains("onebox")    // 建议：排除 Onebox 预览卡片（通常不需要拦截）
+          link.classList.contains("anchor") || // 排除标题锚点
+          link.classList.contains("onebox")
         ) {
           return;
         }
 
-        // 再次确保相对路径不被处理（双重保险）
         const hrefAttr = link.getAttribute("href");
         if (hrefAttr && (hrefAttr.startsWith("#") || hrefAttr.startsWith("mailto:"))) {
             return;
         }
 
-        // 优先级 2: Internal (内部) - 提前检查，避免误伤
         if (isInternal(link)) {
           return; 
         }
@@ -77,7 +91,8 @@ export default apiInitializer((api) => {
           return; 
         }
 
-        // Trusted (受信任)
+        // Trusted (受信任) - 优先处理，直接放行
+        // ✨ 这里修复后，配置完整的 https URL 也能匹配成功，从而跳过下面的登录拦截
         if (matchesDomain(url, settings.excluded_domains)) {
           return; 
         }
@@ -92,7 +107,7 @@ export default apiInitializer((api) => {
         link.dataset.securityLevel = securityLevel;
 
         // ==========================================
-        // 第二步：用户权限检查
+        // 第二步：用户权限检查 (拦截匿名/TL0)
         // ==========================================
 
         // 1. 匿名用户拦截
@@ -147,22 +162,4 @@ export default apiInitializer((api) => {
     },
     { id: "secure-link-shield", onlyStream: true }
   );
-
-  // 辅助函数：绑定弹窗事件
-  const attachConfirmModal = (element, url, securityLevel) => {
-    if (!settings.enable_exit_confirmation && securityLevel === "normal") {
-      return;
-    }
-    element.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      modal.show(ExternalLinkConfirm, {
-        model: {
-          url: url,
-          securityLevel: securityLevel,
-          openInNewTab: settings.external_links_in_new_tab
-        }
-      });
-    });
-  };
 });
