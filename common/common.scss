@@ -7,14 +7,14 @@ $trusted-list: str-to-list("#{$excluded_domains}", "|");
 $risky-list: str-to-list("#{$risky_domains}", "|");
 $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 
-// 2. 核心 Mixin：生成属性选择器 (Fix: 使用 & 符号链接父级)
+// 2. 核心 Mixin：生成属性选择器 (使用 & 符号紧密连接)
 @mixin domain-match($list) {
   $selector: "";
   @each $domain in $list {
     $trimmed: str-slice($domain, 1);
     @if $trimmed != "" {
       @if $selector != "" { $selector: $selector + ", "; }
-      // 关键修改：使用 & 连接，表示“同级且包含该href属性”
+      // 关键修改：生成 &[href*='domain']，确保规则优先级正确
       $selector: $selector + "&[href*='#{$trimmed}']";
     }
   }
@@ -27,16 +27,16 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 
 // 3. 链接样式定义
 .topic-body .cooked {
-  // 基础外链选择器：排除 mention, hashtag, lightbox, blocked-link, 锚点, 相对路径
+  // 排除 mention, hashtag, lightbox, blocked-link, 锚点, 相对路径
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not([href^="/"]):not([href^="#"]) {
     
     // --- A. 默认状态 (Normal) ---
-    // 先设置默认图标，会被后续特定规则覆盖
+    // 强制图标显示在【前面】(before)
     &:before {
       content: "";
       display: inline-block;
-      margin-right: 0.25em;
-      vertical-align: text-top; // 微调对齐
+      margin-right: 0.25em; // 图标在左，右边留空
+      vertical-align: text-top; 
       // 默认颜色与图标
       @include svg-icon(solid, "external-link-alt", var(--primary-medium), 0.85em, 0.85em);
       opacity: 0.8;
@@ -49,7 +49,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 
     // --- C. 受信域名 (Trusted) -> 绿色锁 ---
     @include domain-match($trusted-list) {
-      color: var(--success); // 文字变绿 (可选)
+      color: var(--success); 
       &:before {
         @include svg-icon(solid, "lock", var(--success), 0.85em, 0.85em);
         opacity: 1;
@@ -77,7 +77,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   }
 }
 
-// 4. 屏蔽链接样式 (Blocked)
+// 4. 屏蔽链接样式
 .blocked-link {
   color: var(--primary-low-mid);
   text-decoration: line-through;
@@ -89,26 +89,17 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 // ============================================================
 // 5. Apple 风格弹窗设计 (iOS/macOS Style)
 // ============================================================
-
-// 覆盖 Discourse 默认 Modal 容器
-.external-link-modal {
-  // 这里我们利用 GJS 传入的 class 来定位，通常 Discourse 会在 .d-modal-body 上
-  // 但为了更彻底的样式重置，我们需要通过全局样式渗透
-}
-
-// 针对 Modal 内容的深度定制
 .d-modal.external-link-modal {
   .d-modal__content {
-    border-radius: 18px; // Apple 大圆角
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); // 柔和深阴影
-    background: var(--secondary); // 确保背景色
-    overflow: hidden; // 确保子元素不溢出圆角
-    max-width: 420px; // 限制宽度，更像系统弹窗
+    border-radius: 18px; 
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); 
+    background: var(--secondary); 
+    overflow: hidden; 
+    max-width: 420px; 
     margin: 0 auto;
-    padding: 0; // 重置 padding
+    padding: 0; 
   }
 
-  // 头部 (Header) - 隐藏默认标题栏背景，让其更极简
   .d-modal__header {
     border-bottom: none;
     padding: 24px 24px 0 24px;
@@ -121,29 +112,20 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       text-align: center;
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
     }
-    
-    // 隐藏默认关闭按钮，保持界面干净 (可选，如果不想要右上角 X)
-    // .modal-close { display: none; } 
   }
 
-  // 主体 (Body)
   .d-modal__body {
     padding: 10px 32px 32px 32px;
     text-align: center;
     
-    // 图标容器
     .modal-icon-wrapper {
       margin: 10px auto 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      
-      svg {
-        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); // 图标投影
-      }
+      svg { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
     }
 
-    // 文本描述
     p {
       color: var(--primary-medium);
       font-size: 0.95rem;
@@ -151,13 +133,12 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       margin-bottom: 20px;
     }
 
-    // URL 显示胶囊
     .url-preview {
       display: block;
       background: var(--primary-very-low);
       color: var(--primary);
       padding: 12px 16px;
-      border-radius: 12px; // 胶囊圆角
+      border-radius: 12px;
       font-family: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
       font-size: 0.85rem;
       word-break: break-all;
@@ -166,65 +147,36 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     }
   }
 
-  // 底部 (Footer) - iOS 风格按钮组
   .d-modal__footer {
     border-top: 1px solid var(--primary-low);
-    background: var(--secondary-very-low); // 略微不同的底色
+    background: var(--secondary-very-low); 
     padding: 16px 24px;
     display: flex;
-    flex-direction: column; // 手机端垂直排列
+    flex-direction: column; 
     gap: 12px;
 
     @media (min-width: 500px) {
-      flex-direction: row; // 桌面端并排
+      flex-direction: row; 
       justify-content: flex-end;
     }
 
     .btn {
-      border-radius: 8px; // 按钮圆角
+      border-radius: 8px;
       font-weight: 600;
       font-size: 0.95rem;
       padding: 10px 20px;
-      transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
       
-      // 主按钮 (继续) - 模仿 iOS 蓝色
       &.btn-primary {
         background: #007AFF; 
         color: #fff;
         border: none;
         box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-        
-        &:hover {
-          background: #006ce6;
-          transform: translateY(-1px);
-        }
-        
-        &:active {
-          transform: translateY(1px);
-        }
       }
-
-      // 危险按钮 (复制/拦截)
-      &.btn-danger {
-        background: #FF3B30;
-        box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
-      }
-      
-      // 警告按钮 (风险)
-      &.btn-warning {
-        background: #FF9500;
-        color: #fff;
-        box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3);
-      }
-
-      // 取消按钮 - 幽灵按钮风格
+      &.btn-danger { background: #FF3B30; color: #fff; }
+      &.btn-warning { background: #FF9500; color: #fff; }
       &.btn-flat {
         background: transparent;
         color: var(--primary-medium);
-        &:hover {
-          background: rgba(var(--primary-rgb), 0.05);
-          color: var(--primary);
-        }
       }
     }
   }
