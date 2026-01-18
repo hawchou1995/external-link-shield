@@ -9,33 +9,45 @@ export default apiInitializer((api) => {
   // 辅助函数：匹配域名
   const matchesDomain = (url, domainString) => {
     if (!domainString || !url) return false;
-    // 简单清洗 url，去掉 http/https
     const cleanUrl = url.replace(/^https?:\/\//, "");
     const domains = domainString.split("|").filter(d => d.trim());
-    
-    // 只要 URL 包含列表中的任意一个字符串，即视为匹配
     return domains.some(d => cleanUrl.includes(d.trim()));
   };
 
-  // 辅助函数：判断是否为内部链接（基于 Discourse 自身逻辑 + 设置）
+  // 辅助函数：判断是否为内部链接
   const isInternal = (link) => {
     const url = link.href;
-    // 1. 相对路径
     if (url.startsWith("/") || url.startsWith("#")) return true;
-    // 2. 匹配当前站点域名
     if (url.includes(window.location.hostname)) return true;
-    // 3. 匹配设置中的 Internal Domains
     if (matchesDomain(url, settings.internal_domains)) return true;
-    
     return false;
   };
 
+  // 辅助函数：绑定弹窗事件（抽取出来以便 TL1 逻辑复用）
+  const attachConfirmModal = (element, url, securityLevel) => {
+    // 如果全局开关关闭且不是风险/危险链接，则不绑定
+    if (!settings.enable_exit_confirmation && securityLevel === "normal") {
+      return;
+    }
+
+    element.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      modal.show(ExternalLinkConfirm, {
+        model: {
+          url: url,
+          securityLevel: securityLevel,
+          openInNewTab: settings.external_links_in_new_tab
+        }
+      });
+    });
+  };
+
   api.decorateCookedElement((element) => {
-      // 选取所有带 href 的 a 标签
       const links = element.querySelectorAll("a[href]");
 
       links.forEach((link) => {
-        // 排除 Discourse 特殊元素
         if (
           link.classList.contains("mention") || 
           link.classList.contains("hashtag") || 
@@ -46,58 +58,108 @@ export default apiInitializer((api) => {
         }
 
         const url = link.href;
+        let securityLevel = "normal";
 
-        // --- 优先级 1: Blocked (屏蔽) ---
+        // ==========================================
+        // 第一步：确定安全等级 (Security Classification)
+        // ==========================================
+        
+        // 1. Blocked (屏蔽) - 最高优先级，直接替换
         if (matchesDomain(url, settings.blocked_domains)) {
           const span = document.createElement("span");
           span.classList.add("blocked-link");
           span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
-          span.title = url; // 鼠标悬停显示原链接（可选）
+          span.title = url;
           link.replaceWith(span);
-          return; // 替换后直接结束
+          return; 
         }
 
-        // --- 优先级 2: Internal (内部) ---
+        // 2. Internal (内部) - 直接放行
         if (isInternal(link)) {
-          return; // 不做任何处理
+          return; 
         }
 
-        // --- 优先级 3: Dangerous (危险) ---
+        // 3. Trusted (受信任) - 标记并放行 (不走权限检查，也不弹窗)
+        if (matchesDomain(url, settings.excluded_domains)) {
+          // Trusted 域名通常也希望跳过“未登录拦截”等逻辑，所以直接 return
+          return; 
+        }
+
+        // 4. 其他分级
         if (matchesDomain(url, settings.dangerous_domains)) {
-          link.dataset.securityLevel = "dangerous";
-        } 
-        // --- 优先级 4: Risky (风险) ---
-        else if (matchesDomain(url, settings.risky_domains)) {
-          link.dataset.securityLevel = "risky";
-        }
-        // --- 优先级 5: Trusted (受信任) ---
-        else if (matchesDomain(url, settings.excluded_domains)) {
-          return; // 受信任域名直接放行，不绑定弹窗事件
-        }
-        // --- 优先级 6: Normal (普通) ---
-        else {
-          link.dataset.securityLevel = "normal";
+          securityLevel = "dangerous";
+        } else if (matchesDomain(url, settings.risky_domains)) {
+          securityLevel = "risky";
         }
 
-        // 如果全局开关关闭，且不是风险/危险链接，则不弹窗
-        if (!settings.enable_exit_confirmation && link.dataset.securityLevel === "normal") {
+        // 标记 dataset 用于 CSS 图标渲染
+        link.dataset.securityLevel = securityLevel;
+
+
+        // ==========================================
+        // 第二步：用户权限检查 (User Permission Checks)
+        // ==========================================
+
+        // 1. 匿名用户拦截 (Anonymous Blocking)
+        if (!currentUser && settings.enable_anonymous_blocking) {
+          const loginLink = document.createElement("a");
+          loginLink.href = settings.anonymous_redirect_url || "/login";
+          loginLink.innerText = i18n(themePrefix("secure_links.login_to_view"));
+          loginLink.classList.add("restricted-link-login"); // 可选：用于CSS样式
+          link.replaceWith(loginLink);
           return;
         }
 
-        // 绑定点击事件拦截
-        link.addEventListener("click", (e) => {
-          // 阻止默认跳转
-          e.preventDefault();
-          e.stopPropagation();
+        // 如果用户已登录，获取信任等级
+        const trustLevel = currentUser ? currentUser.trust_level : 0;
+
+        // 2. TL0 用户拦截
+        if (trustLevel === 0 && settings.enable_tl0_blocking) {
+          const tlLink = document.createElement("a");
+          tlLink.href = settings.tl0_redirect_url || "#";
+          tlLink.innerText = i18n(themePrefix("secure_links.first_trust_level_to_view"));
+          tlLink.classList.add("restricted-link-tl0");
+          link.replaceWith(tlLink);
+          return;
+        }
+
+        // 3. TL1 用户需手动点击 (Manual Reveal)
+        if (trustLevel === 1 && settings.enable_tl1_manual_reveal) {
+          const button = document.createElement("a");
+          button.href = "#";
+          button.innerText = i18n(themePrefix("secure_links.click_to_view"));
+          button.classList.add("secure-links-reveal"); // 对应你提供的图片样式
           
-          modal.show(ExternalLinkConfirm, {
-            model: {
-              url: url,
-              securityLevel: link.dataset.securityLevel || "normal",
-              openInNewTab: settings.external_links_in_new_tab
-            }
+          // 保持原有的 CSS 图标逻辑（虽然此时是按钮，但我们可能希望它看起来像链接）
+          button.dataset.securityLevel = securityLevel; 
+
+          button.addEventListener("click", (e) => {
+            e.preventDefault();
+            
+            // 恢复原始链接
+            const realLink = document.createElement("a");
+            realLink.href = url;
+            realLink.innerText = url; // 或者保持原有 link.innerText，但在 decorateCookedElement 里获取 innerText 比较安全
+            // 如果想保留原链接的文字/HTML内容，需要一开始就 cloneNode，这里简化为显示 URL 或原文本
+            // 为了最佳体验，我们尝试保留原有的 innerHTML:
+            realLink.innerHTML = link.innerHTML; 
+            realLink.dataset.securityLevel = securityLevel;
+            
+            // 重新绑定弹窗事件
+            attachConfirmModal(realLink, url, securityLevel);
+            
+            button.replaceWith(realLink);
           });
-        });
+
+          link.replaceWith(button);
+          return;
+        }
+
+        // ==========================================
+        // 第三步：绑定交互事件 (Interaction)
+        // ==========================================
+        // TL2+ 用户或未开启限制的情况
+        attachConfirmModal(link, url, securityLevel);
       });
     },
     { id: "secure-link-shield", onlyStream: true }
