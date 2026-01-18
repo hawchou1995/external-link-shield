@@ -37,6 +37,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       color: var(--success);
       &:before {
         opacity: 1;
+        // Green Lock
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 448 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23008A00' d='M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z'/%3E%3C/svg%3E") !important;
       }
     }
@@ -44,6 +45,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       color: var(--yellow-600);
       &:before {
         opacity: 1;
+        // Yellow Warning
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D97706' d='M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z'/%3E%3C/svg%3E") !important;
       }
     }
@@ -52,6 +54,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       font-weight: bold;
       &:before {
         opacity: 1;
+        // Red Skull
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D32F2F' d='M416 398.9c58.8-26.1 96-85.1 96-150.9C512 137.3 397.3 48 256 48S0 137.3 0 248c0 65.8 37.2 124.8 96 150.9V424c0 22.1 17.9 40 40 40h72c0 26.5 21.5 48 48 48s48-21.5 48-48h72c22.1 0 40-17.9 40-40V398.9zM192 256c0-17.7 14.3-32 32-32s32 14.3 32 32-14.3 32-32 32-32-14.3-32-32zm128 32c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z'/%3E%3C/svg%3E") !important;
       }
     }
@@ -75,7 +78,9 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   }
 }
 
+// ============================================================
 // Modal Styles
+// ============================================================
 .d-modal.external-link-modal {
   .d-modal__content {
     border-radius: 12px;
@@ -85,8 +90,12 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     overflow: hidden;
   }
 
-  .d-modal__header, .d-modal__body { display: none !important; padding: 0 !important; }
-  .d-modal__body { padding: 0 !important; }
+  // 🌟 修复：只隐藏原生标题，BODY必须显示！
+  .d-modal__header { display: none !important; }
+  .d-modal__body { 
+    padding: 0 !important; 
+    display: block !important; // 强制显示Body
+  }
 
   // Custom Header
   .custom-header {
@@ -125,12 +134,10 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     }
   }
 
-  // Renamed Body Class
   .shield-modal-body { 
     padding: 16px 20px; 
-    text-align: center; 
-    display: block !important; // 强制显示
-    color: var(--primary); // 确保文字有颜色
+    text-align: center;
+    color: var(--primary);
   }
   
   .desc { margin-bottom: 12px; color: var(--primary-medium); font-size: 0.9rem; line-height: 1.4; }
@@ -154,7 +161,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     svg { width: 0.9em; height: 0.9em; }
   }
   
-  // Footer - Renamed & Forced Right
+  // Footer - 强制右对齐
   .shield-modal-footer {
     display: flex;
     justify-content: flex-end !important;
