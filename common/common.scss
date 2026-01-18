@@ -1,6 +1,6 @@
 @import "str-to-list";
 
-// 读取设置
+// 读取配置
 $internal-list: str-to-list("#{$internal_domains}", "|");
 $trusted-list: str-to-list("#{$excluded_domains}", "|");
 $risky-list: str-to-list("#{$risky_domains}", "|");
@@ -19,57 +19,61 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 }
 
 // ============================================================
-// 1. Post Links Icon Logic (Data URI)
+// 1. 帖子内链接图标 (Post Links)
 // ============================================================
 .topic-body .cooked {
-  a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not([href^="/"]):not([href^="#"]) {
+  a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not(.restricted-link-login):not(.restricted-link-tl0):not(.secure-links-reveal):not([href^="/"]):not([href^="#"]) {
     
-    // 默认：External (蓝色)
+    // 默认：普通外链 (蓝色图标)
     &:before {
       content: "";
       display: inline-block !important;
-      width: 0.85em; height: 0.85em;
+      width: 14px; height: 14px;
       margin-right: 4px;
       vertical-align: middle;
       background-size: contain; background-repeat: no-repeat;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%232196F3' d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
       opacity: 0.8;
+      // 蓝色 External
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%232196F3' d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
     }
 
-    // Internal -> Hide
+    // Internal -> 隐藏
     @include domain-match($internal-list) { &:before { display: none !important; } }
 
-    // Trusted -> Green Lock
+    // Trusted -> 绿色锁
     @include domain-match($trusted-list) {
       color: var(--success);
       &:before {
         opacity: 1;
+        // 绿色 Lock
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 448 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23008A00' d='M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z'/%3E%3C/svg%3E") !important;
       }
     }
 
-    // Risky -> Yellow Warning
+    // Risky -> 黄色警告
     @include domain-match($risky-list) {
       color: var(--yellow-600);
       &:before {
         opacity: 1;
+        // 黄色 Exclamation
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D97706' d='M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z'/%3E%3C/svg%3E") !important;
       }
     }
 
-    // Dangerous -> Red Skull
+    // Dangerous -> 红色骷髅
     @include domain-match($dangerous-list) {
       color: var(--danger);
       font-weight: bold;
       &:before {
         opacity: 1;
+        // 红色 Skull
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D32F2F' d='M416 398.9c58.8-26.1 96-85.1 96-150.9C512 137.3 397.3 48 256 48S0 137.3 0 248c0 65.8 37.2 124.8 96 150.9V424c0 22.1 17.9 40 40 40h72c0 26.5 21.5 48 48 48s48-21.5 48-48h72c22.1 0 40-17.9 40-40V398.9zM192 256c0-17.7 14.3-32 32-32s32 14.3 32 32-14.3 32-32 32-32-14.3-32-32zm128 32c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z'/%3E%3C/svg%3E") !important;
       }
     }
   }
 }
 
-// 5. Blocked Links (Gray Ban Icon)
+// 屏蔽链接样式
 .blocked-link {
   color: var(--primary-low-mid);
   text-decoration: line-through;
@@ -78,16 +82,17 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
   &:before {
     content: "";
     display: inline-block;
-    width: 0.9em; height: 0.9em;
+    width: 14px; height: 14px;
     margin-right: 4px;
     vertical-align: middle;
     background-size: contain; background-repeat: no-repeat;
+    // 灰色 Ban
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23888888' d='M367.2 412.5L99.5 144.8C77.1 176.1 64 214.5 64 256c0 106 86 192 192 192c41.5 0 79.9-13.1 111.2-35.5zm45.3-45.3C434.9 335.9 448 297.5 448 256c0-106-86-192-192-192c-41.5 0-79.9 13.1-111.2 35.5L412.5 367.2zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z'/%3E%3C/svg%3E");
   }
 }
 
 // ============================================================
-// Modal Styles
+// 弹窗样式 (Apple Style)
 // ============================================================
 .d-modal.external-link-modal {
   .d-modal__content {
@@ -98,11 +103,10 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     overflow: hidden;
   }
 
-  // Hide Native Header
   .d-modal__header { display: none !important; }
   .d-modal__body { padding: 0 !important; }
 
-  // Custom Header
+  // Header
   .custom-header {
     position: relative;
     padding: 16px 20px;
@@ -113,55 +117,29 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     justify-content: center;
     border-radius: 18px 18px 0 0;
 
-    .header-content {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .header-icon {
-      width: 20px; height: 20px;
-      display: inline-block;
-      svg { width: 100%; height: 100%; }
-    }
-
-    .header-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--primary);
-    }
-
+    .header-content { display: flex; align-items: center; gap: 8px; }
+    .header-icon { width: 20px; height: 20px; display: inline-block; svg { width: 100%; height: 100%; } }
+    .header-title { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    
     .header-badge {
-      font-size: 0.75rem;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-weight: 600;
-      line-height: 1;
+      font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: 600; line-height: 1;
       &.normal { background: rgba(33, 150, 243, 0.1); color: #2196F3; }
       &.risky { background: rgba(217, 119, 6, 0.15); color: #D97706; }
       &.dangerous { background: rgba(211, 47, 47, 0.15); color: #D32F2F; }
     }
 
     .close-btn {
-      position: absolute;
-      right: 15px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--primary-medium);
-      padding: 0;
-      display: flex; 
-      align-items: center;
-      width: 32px; height: 32px;
-      justify-content: center;
-      border-radius: 50%;
-      &:hover { background: rgba(var(--primary-rgb), 0.05); }
+      position: absolute; right: 15px; background: none; border: none; cursor: pointer;
+      color: var(--primary-medium); padding: 0;
+      width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+      &:hover { background: rgba(var(--primary-rgb), 0.05); border-radius: 50%; }
       svg { width: 14px; height: 14px; }
     }
   }
 
   .modal-body { padding: 24px; text-align: center; }
   .desc { margin-bottom: 15px; color: var(--primary-medium); font-size: 0.95rem; }
+  
   .url-box { 
     background: var(--primary-very-low); 
     padding: 10px; 
@@ -170,16 +148,33 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     word-break: break-all; 
     margin-bottom: 15px;
     font-size: 0.85rem;
+    border: 1px solid rgba(var(--primary-rgb), 0.05);
   }
-  .report-hint { font-size: 0.85rem; color: var(--primary-medium); display: flex; align-items: center; justify-content: center; gap: 5px; }
   
+  .report-hint { 
+    font-size: 0.85rem; 
+    color: var(--primary-medium); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 5px; 
+    svg { width: 1em; height: 1em; }
+  }
+  
+  // Footer - 按钮右对齐
   .modal-footer {
     display: flex;
-    justify-content: flex-end;
-    gap: 10px;
+    justify-content: flex-end !important; // 强制右对齐
+    gap: 12px;
     padding: 16px 24px;
     background: var(--secondary-very-low);
-    .btn { border-radius: 8px; font-weight: 600; }
+    
+    .btn { 
+      border-radius: 8px; 
+      font-weight: 600; 
+      padding: 8px 16px;
+    }
+    
     .btn-primary { background: #2196F3; color: white; }
     .btn-danger { background: #D32F2F; color: white; }
     .btn-warning { background: #D97706; color: white; }
