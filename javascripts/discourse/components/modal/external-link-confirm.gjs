@@ -16,31 +16,38 @@ export default class ExternalLinkConfirm extends Component {
   get isNormal() { return !this.isDangerous && !this.isRisky; }
 
   // --- 文本 Getters ---
-  // 标题直接包含类型描述
   get title() {
-    if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_title"));
-    if (this.isRisky) return i18n(themePrefix("secure_links.risky_title"));
     return i18n(themePrefix("secure_links.leaving_confirmation_title"));
   }
 
-  get disclaimerText() { return i18n(themePrefix("secure_links.leaving_confirmation_disclaimer")); }
+  // ✨ 新增：徽章文本 (Badge Text)
+  get badgeText() {
+    if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_title")); // "危险链接"
+    if (this.isRisky) return i18n(themePrefix("secure_links.risky_title"));       // "可疑链接"
+    return i18n(themePrefix("secure_links.external_label"));                      // "外部链接" (需在yml补充)
+  }
+
+  // 描述文本
+  get descriptionText() {
+    if (this.isDangerous) return i18n(themePrefix("secure_links.dangerous_warning"));
+    if (this.isRisky) return i18n(themePrefix("secure_links.risky_warning"));
+    return i18n(themePrefix("secure_links.leaving_confirmation_disclaimer")); 
+  }
+
   get questionText() { return i18n(themePrefix("secure_links.leaving_confirmation_question")); }
   get destinationText() { return i18n(themePrefix("secure_links.leaving_confirmation_destination")); }
-  
-  get dangerousWarningText() { return i18n(themePrefix("secure_links.dangerous_warning")); }
-  get riskyWarningText() { return i18n(themePrefix("secure_links.risky_warning")); }
-  
   get reportHintText() { return i18n(themePrefix("secure_links.leaving_confirmation_report_hint")); }
   
+  // 按钮文本
   get copyUrlLabel() { return i18n(themePrefix("secure_links.copy_url")); }
   get continueLabel() { return i18n(themePrefix("secure_links.continue")); }
   get cancelLabel() { return i18n("cancel"); }
 
-  // --- 图标定义 ---
+  // --- 图标与样式 ---
   get titleIcon() {
     if (this.isDangerous) return "skull";
     if (this.isRisky) return "triangle-exclamation";
-    return "external-link-alt"; // 普通链接用这个图标
+    return "external-link-alt"; 
   }
 
   // --- 动作 ---
@@ -63,35 +70,40 @@ export default class ExternalLinkConfirm extends Component {
   }
 
   <template>
-    {{!-- 
-      1. @title="" : 隐藏 Discourse 默认标题栏 
-      2. 增加 class="external-link-modal" 用于 CSS 定制
-    --}}
-    <DModal @title="" @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
+    <DModal @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
+      
+      {{!-- ✨ 核心修复：使用 <:title> 插槽自定义标题栏 --}}
+      <:title>
+        <div class="custom-modal-title">
+          {{!-- 图标 --}}
+          <span class="title-icon">
+            {{dIcon this.titleIcon}}
+          </span>
+          
+          {{!-- 标题文本 --}}
+          <span class="title-text">{{this.title}}</span>
+          
+          {{!-- 类型徽章 (Pill Badge) --}}
+          <span class="type-badge {{this.level}}">
+            {{this.badgeText}}
+          </span>
+        </div>
+      </:title>
+
       <:body>
         <div class="modal-body-container">
           
-          {{!-- ✨ 自定义标题栏 (Icon + Text 一行显示) --}}
-          <div class="custom-header {{this.level}}">
-             {{dIcon this.titleIcon}}
-             <span class="header-title">{{this.title}}</span>
-          </div>
-
-          {{!-- 分割线 --}}
-          <div class="header-separator"></div>
-
-          {{!-- 描述文本 --}}
+          {{!-- 核心提示文本 --}}
           <div class="main-alert-text">
-            {{!-- 危险/风险链接显示具体警告 --}}
-            {{#if this.isDangerous}}
-              <p class="warning-text dangerous">{{this.dangerousWarningText}}</p>
-            {{else if this.isRisky}}
-              <p class="warning-text risky">{{this.riskyWarningText}}</p>
-            {{else}}
-              {{!-- 普通链接显示常规提示 --}}
-              <p class="disclaimer-text">{{this.disclaimerText}}</p>
-              <p class="confirm-question">{{this.questionText}}</p>
+            <p class="description">{{this.descriptionText}}</p>
+            
+            {{#if this.isNormal}}
+               <p class="confirm-question">{{this.questionText}}</p>
             {{/if}}
+            
+            <p class="redirect-hint">
+               {{this.destinationText}}
+            </p>
           </div>
 
           {{!-- URL 预览胶囊 --}}
