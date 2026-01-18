@@ -15,7 +15,7 @@ export default class ExternalLinkConfirm extends Component {
   get isRisky() { return this.level === 'risky'; }
   get isNormal() { return !this.isDangerous && !this.isRisky; }
 
-  // --- 文本 Getters ---
+  // --- 文本 ---
   get title() { return i18n(themePrefix("secure_links.leaving_confirmation_title")); }
 
   get badgeText() {
@@ -38,7 +38,7 @@ export default class ExternalLinkConfirm extends Component {
   get continueLabel() { return i18n(themePrefix("secure_links.continue")); }
   get cancelLabel() { return i18n("cancel"); }
 
-  // --- 图标定义 ---
+  // --- 图标定义 (必须匹配 solid.scss 的 keys) ---
   get titleIcon() {
     if (this.isDangerous) return "skull";
     if (this.isRisky) return "triangle-exclamation";
@@ -65,7 +65,6 @@ export default class ExternalLinkConfirm extends Component {
   }
 
   <template>
-    {{!-- 隐藏原生标题 --}}
     <DModal @title="" @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
       <:body>
         
@@ -74,11 +73,13 @@ export default class ExternalLinkConfirm extends Component {
           
           {{!-- 1. 标题内容 --}}
           <div class="header-center-content">
-             {{!-- 这里使用 class 来确保图标颜色 --}}
+             {{!-- 图标 --}}
              <span class="header-icon-span">
                 {{dIcon this.titleIcon}}
              </span>
+             {{!-- 标题 --}}
              <span class="header-title">{{this.title}}</span>
+             {{!-- 徽章 --}}
              <span class="type-badge {{this.level}}">{{this.badgeText}}</span>
           </div>
           
