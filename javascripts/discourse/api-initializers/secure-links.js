@@ -8,35 +8,50 @@ export default apiInitializer((api) => {
 
   const safeSplit = (str) => (str || "").split("|").filter(Boolean);
 
-  // 🌟 新增：清洗域名输入（去掉 http, www, 路径）
-  const cleanDomain = (d) => {
-    return d.trim().toLowerCase()
-      .replace(/^https?:\/\//, '') // 去掉协议
-      .replace(/^www\./, '')       // 去掉 www
-      .replace(/\/$/, '');         // 去掉尾部斜杠
+  // 🌟 核心升级：超级清洗函数
+  // 不管配置填 "google.com" 还是 "https://google.com/foo"，都能提取出 "google.com"
+  const getHostnameFromConfig = (entry) => {
+    let d = entry.trim().toLowerCase();
+    // 1. 尝试作为 URL 解析
+    try {
+      // 如果没有协议头，补一个方便解析
+      const urlObj = new URL(d.startsWith('http') ? d : `http://${d}`);
+      return urlObj.hostname.replace(/^www\./, '');
+    } catch (e) {
+      // 2. 如果解析失败，进行暴力清洗
+      return d
+        .replace(/^https?:\/\//, '') // 去掉协议
+        .replace(/^www\./, '')       // 去掉 www
+        .split('/')[0]               // 🔪 关键：砍掉路径
+        .split('?')[0];              // 🔪 关键：砍掉参数
+    }
   };
 
   const matchesDomain = (urlStr, domainString) => {
     if (!urlStr) return false;
     try {
+      // 提取链接的 hostname
       const urlObj = new URL(urlStr); 
-      const hostname = urlObj.hostname.toLowerCase().replace(/^www\./, ''); // 统一去掉 www
+      const linkHostname = urlObj.hostname.toLowerCase().replace(/^www\./, '');
+      
       const configDomains = safeSplit(domainString);
       
-      return configDomains.some(d => {
-        const configD = cleanDomain(d);
-        // 精确匹配域名或子域名
-        return hostname === configD || hostname.endsWith("." + configD);
+      return configDomains.some(entry => {
+        const configHostname = getHostnameFromConfig(entry);
+        // 匹配：完全相等 OR 是子域名 (例如 linkHostname="a.b.com", config="b.com")
+        return linkHostname === configHostname || linkHostname.endsWith("." + configHostname);
       });
     } catch (e) {
-      return false; // 如果 URL 格式不对，直接视为不匹配
+      return false; 
     }
   };
 
   const isInternal = (link) => {
     try {
       const href = link.getAttribute("href");
-      if (!href || href.startsWith("/") || href.startsWith("#")) return true;
+      if (!href || href.startsWith("#")) return true; 
+      if (href.startsWith("/")) return true; // 相对路径也是内部
+      
       if (link.href.includes(window.location.hostname)) return true;
       if (matchesDomain(link.href, settings.internal_domains)) return true;
     } catch(e) { return false; }
@@ -71,7 +86,7 @@ export default apiInitializer((api) => {
 
         const url = link.href;
 
-        // --- 1. 屏蔽 (Blocked) ---
+        // --- 1. 屏蔽 (Blocked) - 物理销毁 ---
         if (matchesDomain(url, settings.blocked_domains)) {
           const span = document.createElement("span");
           span.classList.add("blocked-link"); 
@@ -88,11 +103,12 @@ export default apiInitializer((api) => {
           return;
         }
 
-        // --- 3. 受信 (Trusted) ---
+        // --- 3. 受信 (Trusted) - 优先于登录检查 ---
         if (matchesDomain(url, settings.excluded_domains)) {
-          link.dataset.securityLevel = "trusted"; // 🌟 必须显式标记
+          link.dataset.securityLevel = "trusted"; // 🌟 标记给 CSS
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
+          // 直接 return，不进行后续的登录检查或弹窗绑定
           return; 
         }
 
@@ -101,10 +117,9 @@ export default apiInitializer((api) => {
         if (matchesDomain(url, settings.dangerous_domains)) level = "dangerous";
         else if (matchesDomain(url, settings.risky_domains)) level = "risky";
         
-        // 🌟 写入等级，CSS 依赖此属性变色
         link.dataset.securityLevel = level;
 
-        // --- 5. 登录/权限拦截 ---
+        // --- 5. 登录/权限拦截 (只拦截 Normal/Risky/Dangerous) ---
         if (!currentUser && settings.enable_anonymous_blocking) {
           const newLink = document.createElement("a");
           newLink.href = settings.anonymous_redirect_url || "/login";
