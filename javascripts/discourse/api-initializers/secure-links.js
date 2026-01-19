@@ -8,20 +8,32 @@ export default apiInitializer((api) => {
 
   const safeSplit = (str) => (str || "").split("|").filter(Boolean);
 
-  const matchesDomain = (url, domainString) => {
-    if (!url) return false;
-    const u = url.toLowerCase();
-    return safeSplit(domainString).some(d => u.includes(d.trim().toLowerCase()));
+  // 🌟 核心修复：基于 Hostname 的精准匹配
+  const matchesDomain = (urlStr, domainString) => {
+    if (!urlStr) return false;
+    try {
+      // 提取 hostname (例如 www.reddit.com)
+      // 如果是相对路径，new URL 会报错，catch 块会处理
+      const urlObj = new URL(urlStr); 
+      const hostname = urlObj.hostname.toLowerCase();
+      
+      const configDomains = safeSplit(domainString);
+      
+      return configDomains.some(d => {
+        const configD = d.trim().toLowerCase();
+        // 匹配完全相等，或者以 .domain 结尾 (子域名)
+        return hostname === configD || hostname.endsWith("." + configD);
+      });
+    } catch (e) {
+      // 如果不是有效 URL (例如相对路径)，尝试用简单字符串匹配作为兜底
+      return safeSplit(domainString).some(d => urlStr.toLowerCase().includes(d.trim().toLowerCase()));
+    }
   };
 
-  // 内部链接判定
   const isInternal = (link) => {
     try {
       const href = link.getAttribute("href");
-      if (!href || href.startsWith("#")) return true; // 锚点视为内部
-      // 注意：相对路径 /foo 也是内部，但我们需要让它走下面的逻辑去加 _blank
-      if (href.startsWith("/")) return true; 
-      
+      if (!href || href.startsWith("/") || href.startsWith("#")) return true;
       if (link.href.includes(window.location.hostname)) return true;
       if (matchesDomain(link.href, settings.internal_domains)) return true;
     } catch(e) { return false; }
@@ -35,7 +47,7 @@ export default apiInitializer((api) => {
       model: {
         url: url,
         securityLevel: level,
-        openInNewTab: true // 强制弹窗内的链接也新标签页
+        openInNewTab: settings.external_links_in_new_tab
       }
     });
   };
@@ -47,7 +59,6 @@ export default apiInitializer((api) => {
       const links = element.querySelectorAll("a[href]");
       
       links.forEach(link => {
-        // 排除干扰项
         if (
           link.classList.contains("mention") || 
           link.classList.contains("lightbox") || 
@@ -57,7 +68,7 @@ export default apiInitializer((api) => {
 
         const url = link.href;
 
-        // --- 1. 屏蔽域名 (Blocked) ---
+        // --- 1. 屏蔽 (Blocked) ---
         if (matchesDomain(url, settings.blocked_domains)) {
           const span = document.createElement("span");
           span.classList.add("blocked-link"); 
@@ -66,20 +77,20 @@ export default apiInitializer((api) => {
           return;
         }
 
-        // --- 2. 内部域名 (Internal) ---
+        // --- 2. 内部 (Internal) ---
         if (isInternal(link)) {
-          // 🌟 需求实现：内部域名也要新标签页打开
+          link.dataset.securityLevel = "internal"; // 标记为内部，CSS隐藏图标
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
-          return; // 不弹窗，直接放行
+          return;
         }
 
-        // --- 3. 受信任域名 (Trusted) ---
+        // --- 3. 受信 (Trusted) ---
         if (matchesDomain(url, settings.excluded_domains)) {
-          // 强制新标签页
+          link.dataset.securityLevel = "trusted"; // 🌟 标记为信任，CSS显示绿锁
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
-          return; // CSS 会加绿锁，不弹窗
+          return; // 直接放行
         }
 
         // --- 4. 判定等级 ---
@@ -87,6 +98,7 @@ export default apiInitializer((api) => {
         if (matchesDomain(url, settings.dangerous_domains)) level = "dangerous";
         else if (matchesDomain(url, settings.risky_domains)) level = "risky";
         
+        // 🌟 核心：把算出来的 level 赋给 dataset，CSS 靠这个变色
         link.dataset.securityLevel = level;
 
         // --- 5. 登录/权限拦截 ---
@@ -108,7 +120,7 @@ export default apiInitializer((api) => {
           return;
         }
 
-        // --- 6. 强制新标签页 (对剩下的外链) ---
+        // --- 6. 强制新标签页 ---
         link.setAttribute("target", "_blank");
         link.setAttribute("rel", "noopener noreferrer");
 
@@ -122,9 +134,9 @@ export default apiInitializer((api) => {
             e.preventDefault();
             const realLink = document.createElement("a");
             realLink.href = url;
-            realLink.setAttribute("target", "_blank"); // 恢复后也要新标签
+            realLink.setAttribute("target", "_blank"); 
             realLink.innerHTML = link.innerHTML;
-            realLink.dataset.securityLevel = level;
+            realLink.dataset.securityLevel = level; // 恢复时也要打标
             realLink.addEventListener("click", (ev) => openModal(ev, url, level));
             button.replaceWith(realLink);
           });
