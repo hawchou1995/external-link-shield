@@ -75,7 +75,6 @@ export default class ExternalLinkConfirm extends Component {
 
   <template>
     <DModal @title="" @closeModal={{@closeModal}} class="external-link-modal {{this.level}}">
-      {{!-- 注意：这里只有 <:body>，没有 <:footer> --}}
       <:body>
         <div class="custom-header">
           <div class="header-content">
@@ -107,7 +106,6 @@ export default class ExternalLinkConfirm extends Component {
           {{/unless}}
         </div>
 
-        {{!-- 🌟 核心修复：Footer 现在位于 Body 内部 --}}
         <div class="custom-footer">
           <DButton @translatedLabel={{this.btnCancel}} @action={{this.close}} class="btn-flat" />
           
