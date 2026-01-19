@@ -1,30 +1,12 @@
 @import "str-to-list";
 
-// 读取配置
-$internal-list: str-to-list("#{$internal_domains}", "|");
-$trusted-list: str-to-list("#{$excluded_domains}", "|");
-$risky-list: str-to-list("#{$risky_domains}", "|");
-$dangerous-list: str-to-list("#{$dangerous_domains}", "|");
-
-@mixin domain-match($list) {
-  $selector: "";
-  @each $domain in $list {
-    $trimmed: str-slice($domain, 1);
-    @if $trimmed != "" {
-      @if $selector != "" { $selector: $selector + ", "; }
-      $selector: $selector + "&[href*='#{$trimmed}']";
-    }
-  }
-  @if $selector != "" { #{$selector} { @content; } }
-}
-
 // ============================================================
-// 1. 帖子链接图标 (Post Links) - Data URI 稳健版
+// 1. 帖子链接图标 (Post Links) - V17 JS 驱动版
 // ============================================================
 .topic-body .cooked {
   a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not(.restricted-link-login):not(.restricted-link-tl0):not(.secure-links-reveal):not([href^="/"]):not([href^="#"]) {
     
-    // 默认：普通外链 (蓝色)
+    // 默认基础样式 (容器)
     &:before {
       content: "";
       display: inline-block !important;
@@ -33,21 +15,16 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       vertical-align: middle;
       background-size: contain; background-repeat: no-repeat;
       opacity: 0.8;
+      // 默认图标：蓝色 External (对应 Normal)
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%232196F3' d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
     }
 
-    // 1. 内部 -> 隐藏
-    @include domain-match($internal-list) { &:before { display: none !important; } }
+    // ⚠️ 关键：删除所有 @include domain-match，只用 data 属性！
+
+    // 1. 内部域名 (Internal) -> 隐藏
     &[data-security-level="internal"]:before { display: none !important; }
 
-    // 2. 受信 -> 绿色锁
-    @include domain-match($trusted-list) {
-      color: var(--success);
-      &:before {
-        opacity: 1;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 448 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23008A00' d='M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z'/%3E%3C/svg%3E") !important;
-      }
-    }
+    // 2. 受信域名 (Trusted) -> 绿色锁
     &[data-security-level="trusted"] {
       color: var(--success);
       &:before {
@@ -56,14 +33,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       }
     }
 
-    // 3. 风险 -> 黄色警告
-    @include domain-match($risky-list) {
-      color: var(--yellow-600);
-      &:before {
-        opacity: 1;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D97706' d='M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z'/%3E%3C/svg%3E") !important;
-      }
-    }
+    // 3. 风险域名 (Risky) -> 黄色警告
     &[data-security-level="risky"] {
       color: var(--yellow-600);
       &:before {
@@ -72,15 +42,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
       }
     }
 
-    // 4. 危险 -> 红色骷髅
-    @include domain-match($dangerous-list) {
-      color: var(--danger);
-      font-weight: bold;
-      &:before {
-        opacity: 1;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D32F2F' d='M416 398.9c58.8-26.1 96-85.1 96-150.9C512 137.3 397.3 48 256 48S0 137.3 0 248c0 65.8 37.2 124.8 96 150.9V424c0 22.1 17.9 40 40 40h72c0 26.5 21.5 48 48 48s48-21.5 48-48h72c22.1 0 40-17.9 40-40V398.9zM192 256c0-17.7 14.3-32 32-32s32 14.3 32 32-14.3 32-32 32-32-14.3-32-32zm128 32c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z'/%3E%3C/svg%3E") !important;
-      }
-    }
+    // 4. 危险域名 (Dangerous) -> 红色骷髅
     &[data-security-level="dangerous"] {
       color: var(--danger);
       font-weight: bold;
@@ -110,7 +72,7 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
 }
 
 // ============================================================
-// Modal Styles (V16 - Footer moved to Body)
+// Modal Styles (V17 - Footer in Body, Right Aligned)
 // ============================================================
 .d-modal.external-link-modal {
   .d-modal__content {
@@ -121,11 +83,9 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     overflow: hidden;
   }
 
-  // ⚠️ 彻底隐藏原生Header和Footer，完全由内部DIV控制
+  // 隐藏原生组件，防止布局干扰
   .d-modal__header { display: none !important; }
   .d-modal__footer { display: none !important; }
-  
-  // Body 重置
   .d-modal__body { 
     padding: 0 !important; 
     display: block !important;
@@ -168,7 +128,6 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     }
   }
 
-  // 自定义内容区域
   .shield-body-content { 
     padding: 16px 20px; 
     text-align: center;
@@ -196,17 +155,16 @@ $dangerous-list: str-to-list("#{$dangerous_domains}", "|");
     svg { width: 0.9em; height: 0.9em; }
   }
   
-  // Custom Footer (现在在Body内)
+  // Custom Footer - 强制右对齐
   .custom-footer {
     display: flex;
-    justify-content: flex-end; // 强制右对齐
+    justify-content: flex-end; // Right aligned
     align-items: center;
     gap: 10px;
     padding: 12px 16px;
     background: var(--secondary-very-low);
     width: 100%;
     box-sizing: border-box;
-    // 确保圆角闭合
     border-radius: 0 0 12px 12px;
     
     .btn { 
