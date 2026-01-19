@@ -55,8 +55,11 @@ export default class ExternalLinkConfirm extends Component {
   @action
   proceed() {
     const { url, openInNewTab } = this.args.model;
-    if (openInNewTab) window.open(url, "_blank", "noopener,noreferrer");
-    else window.location.href = url;
+    if (openInNewTab) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      window.location.href = url;
+    }
     this.close();
   }
 
