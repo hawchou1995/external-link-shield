@@ -8,21 +8,28 @@ export default apiInitializer((api) => {
 
   const safeSplit = (str) => (str || "").split("|").filter(Boolean);
 
-  // 🌟 核心：智能域名匹配 (Hostname Matching)
+  // 🌟 新增：清洗域名输入（去掉 http, www, 路径）
+  const cleanDomain = (d) => {
+    return d.trim().toLowerCase()
+      .replace(/^https?:\/\//, '') // 去掉协议
+      .replace(/^www\./, '')       // 去掉 www
+      .replace(/\/$/, '');         // 去掉尾部斜杠
+  };
+
   const matchesDomain = (urlStr, domainString) => {
     if (!urlStr) return false;
     try {
       const urlObj = new URL(urlStr); 
-      const hostname = urlObj.hostname.toLowerCase();
+      const hostname = urlObj.hostname.toLowerCase().replace(/^www\./, ''); // 统一去掉 www
       const configDomains = safeSplit(domainString);
-      // 检查 hostname 是否相等或以 .domain 结尾
+      
       return configDomains.some(d => {
-        const configD = d.trim().toLowerCase();
+        const configD = cleanDomain(d);
+        // 精确匹配域名或子域名
         return hostname === configD || hostname.endsWith("." + configD);
       });
     } catch (e) {
-      // 降级：仅当 URL 格式错误时才使用字符串包含
-      return safeSplit(domainString).some(d => urlStr.toLowerCase().includes(d.trim().toLowerCase()));
+      return false; // 如果 URL 格式不对，直接视为不匹配
     }
   };
 
@@ -69,7 +76,6 @@ export default apiInitializer((api) => {
           const span = document.createElement("span");
           span.classList.add("blocked-link"); 
           span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
-          // 不设置 title，F12 隐身
           link.replaceWith(span);
           return;
         }
@@ -84,10 +90,10 @@ export default apiInitializer((api) => {
 
         // --- 3. 受信 (Trusted) ---
         if (matchesDomain(url, settings.excluded_domains)) {
-          link.dataset.securityLevel = "trusted"; // JS 告诉 CSS：我是信任的！
+          link.dataset.securityLevel = "trusted"; // 🌟 必须显式标记
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
-          return; // 放行
+          return; 
         }
 
         // --- 4. 判定等级 ---
@@ -95,7 +101,7 @@ export default apiInitializer((api) => {
         if (matchesDomain(url, settings.dangerous_domains)) level = "dangerous";
         else if (matchesDomain(url, settings.risky_domains)) level = "risky";
         
-        // 🌟 将判定结果写入 dataset，CSS 据此变色
+        // 🌟 写入等级，CSS 依赖此属性变色
         link.dataset.securityLevel = level;
 
         // --- 5. 登录/权限拦截 ---
@@ -133,7 +139,7 @@ export default apiInitializer((api) => {
             realLink.href = url;
             realLink.setAttribute("target", "_blank"); 
             realLink.innerHTML = link.innerHTML;
-            realLink.dataset.securityLevel = level; // 恢复时也要打标
+            realLink.dataset.securityLevel = level; 
             realLink.addEventListener("click", (ev) => openModal(ev, url, level));
             button.replaceWith(realLink);
           });
