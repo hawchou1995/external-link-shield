@@ -8,24 +8,17 @@ export default apiInitializer((api) => {
 
   const safeSplit = (str) => (str || "").split("|").filter(Boolean);
 
-  // 🌟 核心修复：基于 Hostname 的精准匹配
   const matchesDomain = (urlStr, domainString) => {
     if (!urlStr) return false;
     try {
-      // 提取 hostname (例如 www.reddit.com)
-      // 如果是相对路径，new URL 会报错，catch 块会处理
       const urlObj = new URL(urlStr); 
       const hostname = urlObj.hostname.toLowerCase();
-      
       const configDomains = safeSplit(domainString);
-      
       return configDomains.some(d => {
         const configD = d.trim().toLowerCase();
-        // 匹配完全相等，或者以 .domain 结尾 (子域名)
         return hostname === configD || hostname.endsWith("." + configD);
       });
     } catch (e) {
-      // 如果不是有效 URL (例如相对路径)，尝试用简单字符串匹配作为兜底
       return safeSplit(domainString).some(d => urlStr.toLowerCase().includes(d.trim().toLowerCase()));
     }
   };
@@ -68,18 +61,20 @@ export default apiInitializer((api) => {
 
         const url = link.href;
 
-        // --- 1. 屏蔽 (Blocked) ---
+        // --- 1. 屏蔽 (Blocked) - 物理销毁 ---
         if (matchesDomain(url, settings.blocked_domains)) {
           const span = document.createElement("span");
           span.classList.add("blocked-link"); 
           span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
+          // ⚠️ 这里不存 URL，F12 彻底隐身
           link.replaceWith(span);
           return;
         }
 
         // --- 2. 内部 (Internal) ---
         if (isInternal(link)) {
-          link.dataset.securityLevel = "internal"; // 标记为内部，CSS隐藏图标
+          link.dataset.securityLevel = "internal"; 
+          // 🌟 需求达成：内部域名也强制新标签页
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
           return;
@@ -87,10 +82,10 @@ export default apiInitializer((api) => {
 
         // --- 3. 受信 (Trusted) ---
         if (matchesDomain(url, settings.excluded_domains)) {
-          link.dataset.securityLevel = "trusted"; // 🌟 标记为信任，CSS显示绿锁
+          link.dataset.securityLevel = "trusted";
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
-          return; // 直接放行
+          return; 
         }
 
         // --- 4. 判定等级 ---
@@ -98,7 +93,6 @@ export default apiInitializer((api) => {
         if (matchesDomain(url, settings.dangerous_domains)) level = "dangerous";
         else if (matchesDomain(url, settings.risky_domains)) level = "risky";
         
-        // 🌟 核心：把算出来的 level 赋给 dataset，CSS 靠这个变色
         link.dataset.securityLevel = level;
 
         // --- 5. 登录/权限拦截 ---
@@ -136,7 +130,7 @@ export default apiInitializer((api) => {
             realLink.href = url;
             realLink.setAttribute("target", "_blank"); 
             realLink.innerHTML = link.innerHTML;
-            realLink.dataset.securityLevel = level; // 恢复时也要打标
+            realLink.dataset.securityLevel = level; 
             realLink.addEventListener("click", (ev) => openModal(ev, url, level));
             button.replaceWith(realLink);
           });
