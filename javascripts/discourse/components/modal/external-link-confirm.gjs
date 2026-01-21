@@ -3,7 +3,7 @@ import { action } from "@ember/object";
 import DModal from "discourse/components/d-modal";
 import DButton from "discourse/components/d-button";
 import { i18n } from "discourse-i18n";
-import { inject as service } from "@ember/service";
+import { service } from "@ember/service";
 import { htmlSafe } from "@ember/template";
 import { on } from "@ember/modifier";
 
