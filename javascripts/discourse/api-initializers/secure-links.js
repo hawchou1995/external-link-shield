@@ -8,37 +8,38 @@ export default apiInitializer((api) => {
 
   const safeSplit = (str) => (str || "").split("|").filter(Boolean);
 
-  // 🌟 核心升级：超级清洗函数
-  // 不管配置填 "google.com" 还是 "https://google.com/foo"，都能提取出 "google.com"
+  // 🔧 工具函数：提取纯净域名
   const getHostnameFromConfig = (entry) => {
     let d = entry.trim().toLowerCase();
-    // 1. 尝试作为 URL 解析
     try {
-      // 如果没有协议头，补一个方便解析
       const urlObj = new URL(d.startsWith('http') ? d : `http://${d}`);
       return urlObj.hostname.replace(/^www\./, '');
     } catch (e) {
-      // 2. 如果解析失败，进行暴力清洗
       return d
-        .replace(/^https?:\/\//, '') // 去掉协议
-        .replace(/^www\./, '')       // 去掉 www
-        .split('/')[0]               // 🔪 关键：砍掉路径
-        .split('?')[0];              // 🔪 关键：砍掉参数
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .split('/')[0]
+        .split('?')[0];
     }
   };
 
-  const matchesDomain = (urlStr, domainString) => {
+  // ⚡️⚡️ 极致优化：预先计算所有列表 (只执行一次) ⚡️⚡️
+  // 避免在遍历成百上千个链接时重复解析配置字符串
+  const BLOCKED_LIST = safeSplit(settings.blocked_domains).map(getHostnameFromConfig);
+  const INTERNAL_LIST = safeSplit(settings.internal_domains).map(getHostnameFromConfig);
+  const TRUSTED_LIST = safeSplit(settings.excluded_domains).map(getHostnameFromConfig);
+  const DANGEROUS_LIST = safeSplit(settings.dangerous_domains).map(getHostnameFromConfig);
+  const RISKY_LIST = safeSplit(settings.risky_domains).map(getHostnameFromConfig);
+
+  // 🔄 优化后的匹配函数：直接使用预处理好的 domainList 数组
+  const matchesDomain = (urlStr, domainList) => {
     if (!urlStr) return false;
     try {
-      // 提取链接的 hostname
       const urlObj = new URL(urlStr); 
       const linkHostname = urlObj.hostname.toLowerCase().replace(/^www\./, '');
       
-      const configDomains = safeSplit(domainString);
-      
-      return configDomains.some(entry => {
-        const configHostname = getHostnameFromConfig(entry);
-        // 匹配：完全相等 OR 是子域名 (例如 linkHostname="a.b.com", config="b.com")
+      // 直接在缓存的列表中查找
+      return domainList.some(configHostname => {
         return linkHostname === configHostname || linkHostname.endsWith("." + configHostname);
       });
     } catch (e) {
@@ -50,10 +51,11 @@ export default apiInitializer((api) => {
     try {
       const href = link.getAttribute("href");
       if (!href || href.startsWith("#")) return true; 
-      if (href.startsWith("/")) return true; // 相对路径也是内部
+      if (href.startsWith("/")) return true; 
       
       if (link.href.includes(window.location.hostname)) return true;
-      if (matchesDomain(link.href, settings.internal_domains)) return true;
+      // ⚡️ 使用缓存列表
+      if (matchesDomain(link.href, INTERNAL_LIST)) return true;
     } catch(e) { return false; }
     return false;
   };
@@ -86,8 +88,8 @@ export default apiInitializer((api) => {
 
         const url = link.href;
 
-        // --- 1. 屏蔽 (Blocked) - 物理销毁 ---
-        if (matchesDomain(url, settings.blocked_domains)) {
+        // --- 1. 屏蔽 (Blocked) ⚡️ 使用缓存列表 ---
+        if (matchesDomain(url, BLOCKED_LIST)) {
           const span = document.createElement("span");
           span.classList.add("blocked-link"); 
           span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
@@ -103,23 +105,22 @@ export default apiInitializer((api) => {
           return;
         }
 
-        // --- 3. 受信 (Trusted) - 优先于登录检查 ---
-        if (matchesDomain(url, settings.excluded_domains)) {
-          link.dataset.securityLevel = "trusted"; // 🌟 标记给 CSS
+        // --- 3. 受信 (Trusted) ⚡️ 使用缓存列表 ---
+        if (matchesDomain(url, TRUSTED_LIST)) {
+          link.dataset.securityLevel = "trusted"; 
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
-          // 直接 return，不进行后续的登录检查或弹窗绑定
           return; 
         }
 
-        // --- 4. 判定等级 ---
+        // --- 4. 判定等级 ⚡️ 使用缓存列表 ---
         let level = "normal";
-        if (matchesDomain(url, settings.dangerous_domains)) level = "dangerous";
-        else if (matchesDomain(url, settings.risky_domains)) level = "risky";
+        if (matchesDomain(url, DANGEROUS_LIST)) level = "dangerous";
+        else if (matchesDomain(url, RISKY_LIST)) level = "risky";
         
         link.dataset.securityLevel = level;
 
-        // --- 5. 登录/权限拦截 (只拦截 Normal/Risky/Dangerous) ---
+        // --- 5. 登录/权限拦截 ---
         if (!currentUser && settings.enable_anonymous_blocking) {
           const newLink = document.createElement("a");
           newLink.href = settings.anonymous_redirect_url || "/login";
