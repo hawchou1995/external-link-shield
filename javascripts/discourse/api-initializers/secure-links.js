@@ -57,14 +57,13 @@ export default apiInitializer("0.11", (api) => {
       const link = e.target.closest("a[href]");
       if (!link) return;
       
-      // 哪怕类名被其他插件抹除，也能准确识别身份
+      // 就地验明正身，无视类名被抹除的情况
       if (isInternal(link)) return;
       if (link.classList.contains("mention") || link.classList.contains("hashtag") || link.classList.contains("lightbox") || link.classList.contains("secure-links-reveal")) return;
 
       let level = link.dataset.securityLevel;
       if (level === "internal" || level === "trusted" || level === "blocked") return;
 
-      // 如果没有任何标签，就地验明正身！
       if (!level) {
          if (matchesDomain(link.href, BLOCKED_LIST)) return;
          if (matchesDomain(link.href, TRUSTED_LIST)) return;
@@ -168,6 +167,24 @@ export default apiInitializer("0.11", (api) => {
     });
   };
 
-  api.decorateCookedElement(applyShield, { id: "secure-link-shield" });
+  api.decorateCookedElement((element) => {
+    applyShield(element);
+    
+    // 【杀手锏】加入生命探测器！只要 Callout 或其他插件生成了新的链接，瞬间给它重新套上护盾！
+    if (typeof MutationObserver !== "undefined") {
+      const observer = new MutationObserver((mutations) => {
+        let hasNewNodes = false;
+        for (let m of mutations) {
+          if (m.addedNodes.length > 0) {
+            hasNewNodes = true;
+            break;
+          }
+        }
+        if (hasNewNodes) applyShield(element);
+      });
+      observer.observe(element, { childList: true, subtree: true });
+    }
+  }, { id: "secure-link-shield" });
+  
   window.applyExternalLinkShield = applyShield; 
 });
