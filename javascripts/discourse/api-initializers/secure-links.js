@@ -3,7 +3,7 @@ import ExternalLinkConfirm from "../components/modal/external-link-confirm";
 import { i18n } from "discourse-i18n";
 
 export default apiInitializer("0.11", (api) => {
-  const currentUser = api.container.lookup("service:current-user");
+  const currentUser = api.getCurrentUser();
   const modal = api.container.lookup("service:modal");
 
   const safeSplit = (str) => (str || "").split("|").filter(Boolean);
@@ -40,8 +40,7 @@ export default apiInitializer("0.11", (api) => {
   const isInternal = (link) => {
     try {
       const href = link.getAttribute("href");
-      if (!href || href.startsWith("#")) return true; 
-      if (href.startsWith("/")) return true; 
+      if (!href || href.startsWith("#") || href.startsWith("/")) return true; 
       if (link.href.includes(window.location.hostname)) return true;
       if (matchesDomain(link.href, INTERNAL_LIST)) return true;
     } catch(e) { return false; }
@@ -60,7 +59,7 @@ export default apiInitializer("0.11", (api) => {
     });
   };
 
-  // 全局事件委托：哪怕链接所在的区块被其他插件暴力刷新，由于我们在最外层监听，点击拦截依然生效！
+  // 全局事件捕获，哪怕内容被重写，弹窗拦截依然坚不可摧
   if (!window._secureLinksDelegated) {
     document.body.addEventListener("click", (e) => {
       const link = e.target.closest("a[data-security-level]");
@@ -71,107 +70,111 @@ export default apiInitializer("0.11", (api) => {
       if (level === "normal" && !settings.enable_exit_confirmation) return;
 
       openModal(e, link.href, level);
-    });
+    }, true);
     window._secureLinksDelegated = true;
   }
 
-  api.decorateCookedElement((element) => {
+  // 这是给链接穿护盾的核心逻辑
+  const applyShield = (element) => {
     if (!element) return;
+    const links = element.querySelectorAll("a[href]");
+    
+    links.forEach(link => {
+      if (
+        link.classList.contains("mention") || 
+        link.classList.contains("lightbox") || 
+        link.classList.contains("attachment") || 
+        link.classList.contains("onebox") ||
+        link.hasAttribute("data-security-level") // 防止重复处理
+      ) return;
 
-    try {
-      const links = element.querySelectorAll("a[href]");
-      
-      links.forEach(link => {
-        if (
-          link.classList.contains("mention") || 
-          link.classList.contains("lightbox") || 
-          link.classList.contains("attachment") || 
-          link.classList.contains("onebox") ||
-          link.hasAttribute("data-security-level") // 防重复处理
-        ) return;
+      const url = link.href;
 
-        const url = link.href;
+      if (matchesDomain(url, BLOCKED_LIST)) {
+        const span = document.createElement("span");
+        span.className = "blocked-link"; 
+        span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
+        link.replaceWith(span);
+        return;
+      }
 
-        if (matchesDomain(url, BLOCKED_LIST)) {
-          const span = document.createElement("span");
-          span.classList.add("blocked-link"); 
-          span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
-          link.replaceWith(span);
-          return;
-        }
-
-        if (isInternal(link)) {
-          link.dataset.securityLevel = "internal"; 
-          link.classList.add("internal-link"); // ✅ 找回丢失的内部链接 CSS 类名
-          link.setAttribute("target", "_blank");
-          link.setAttribute("rel", "noopener noreferrer");
-          return;
-        }
-
-        if (matchesDomain(url, TRUSTED_LIST)) {
-          link.dataset.securityLevel = "trusted"; 
-          link.classList.add("trusted-link"); // ✅ 找回信任链接类名
-          link.setAttribute("target", "_blank");
-          link.setAttribute("rel", "noopener noreferrer");
-          return; 
-        }
-
-        // ✅ 找回外部链接类名，这是图标正常显示的核心！
-        let level = "normal";
-        if (matchesDomain(url, DANGEROUS_LIST)) {
-            level = "dangerous";
-            link.classList.add("dangerous-link");
-        } else if (matchesDomain(url, RISKY_LIST)) {
-            level = "risky";
-            link.classList.add("risky-link");
-        } else {
-            link.classList.add("external-link");
-        }
-        
-        link.dataset.securityLevel = level;
-
-        if (!currentUser && settings.enable_anonymous_blocking) {
-          const newLink = document.createElement("a");
-          newLink.href = settings.anonymous_redirect_url || "/login";
-          newLink.className = "restricted-link-login"; 
-          newLink.innerText = i18n(themePrefix("secure_links.login_to_view"));
-          link.replaceWith(newLink);
-          return;
-        }
-
-        if (currentUser && currentUser.trust_level === 0 && settings.enable_tl0_blocking) {
-          const newLink = document.createElement("a");
-          newLink.href = settings.tl0_redirect_url || "#";
-          newLink.className = "restricted-link-tl0";
-          newLink.innerText = i18n(themePrefix("secure_links.first_trust_level_to_view"));
-          link.replaceWith(newLink);
-          return;
-        }
-
+      if (isInternal(link)) {
+        link.dataset.securityLevel = "internal"; 
+        link.classList.add("internal-link");
         link.setAttribute("target", "_blank");
         link.setAttribute("rel", "noopener noreferrer");
+        return;
+      }
 
-        if (currentUser && currentUser.trust_level === 1 && settings.enable_tl1_manual_reveal) {
-          const button = document.createElement("a");
-          button.href = "javascript:void(0)";
-          button.innerText = i18n(themePrefix("secure_links.click_to_view"));
-          button.className = "secure-links-reveal";
-          button.addEventListener("click", (e) => {
-            e.preventDefault();
-            const realLink = document.createElement("a");
-            realLink.href = url;
-            realLink.setAttribute("target", "_blank"); 
-            realLink.innerHTML = link.innerHTML;
-            realLink.dataset.securityLevel = level; 
-            realLink.className = link.className; // ✅ 保证手动展示的链接也带有外部图标的 CSS 类
-            button.replaceWith(realLink);
-          });
-          link.replaceWith(button);
-          return;
-        }
-      });
-    } catch (e) {
-      console.error("[Link Shield] Error:", e);
-    }
-  }, { id: "secure-link-shield", onlyStream: true });
+      if (matchesDomain(url, TRUSTED_LIST)) {
+        link.dataset.securityLevel = "trusted"; 
+        link.classList.add("trusted-link");
+        link.setAttribute("target", "_blank");
+        link.setAttribute("rel", "noopener noreferrer");
+        return; 
+      }
+
+      let level = "normal";
+      if (matchesDomain(url, DANGEROUS_LIST)) {
+          level = "dangerous";
+          link.classList.add("dangerous-link");
+      } else if (matchesDomain(url, RISKY_LIST)) {
+          level = "risky";
+          link.classList.add("risky-link");
+      } else {
+          link.classList.add("external-link"); // 找回被抹去的外部链接图标标识！
+      }
+      
+      link.dataset.securityLevel = level;
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+
+      if (!currentUser && settings.enable_anonymous_blocking) {
+        const newLink = document.createElement("a");
+        newLink.href = settings.anonymous_redirect_url || "/login";
+        newLink.className = "restricted-link-login " + link.className; 
+        newLink.innerText = i18n(themePrefix("secure_links.login_to_view"));
+        link.replaceWith(newLink);
+        return;
+      }
+
+      if (currentUser && currentUser.trust_level === 0 && settings.enable_tl0_blocking) {
+        const newLink = document.createElement("a");
+        newLink.href = settings.tl0_redirect_url || "#";
+        newLink.className = "restricted-link-tl0 " + link.className;
+        newLink.innerText = i18n(themePrefix("secure_links.first_trust_level_to_view"));
+        link.replaceWith(newLink);
+        return;
+      }
+
+      if (currentUser && currentUser.trust_level === 1 && settings.enable_tl1_manual_reveal) {
+        const button = document.createElement("a");
+        button.href = "javascript:void(0)";
+        button.innerText = i18n(themePrefix("secure_links.click_to_view"));
+        button.className = "secure-links-reveal " + link.className;
+        button.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const realLink = document.createElement("a");
+          realLink.href = url;
+          realLink.setAttribute("target", "_blank"); 
+          realLink.setAttribute("rel", "noopener noreferrer");
+          realLink.innerHTML = link.innerHTML;
+          realLink.dataset.securityLevel = level; 
+          realLink.className = link.className; 
+          button.replaceWith(realLink);
+        });
+        link.replaceWith(button);
+        return;
+      }
+    });
+  };
+
+  // 正常页面渲染时触发
+  api.decorateCookedElement(applyShield, { id: "secure-link-shield", onlyStream: true });
+  
+  // 监听自定义事件，专门为了配合后面的【隐藏插件】解锁内容后重新刷新图标！
+  document.addEventListener("secureContentUnlocked", (e) => {
+    applyShield(e.detail.element);
+  });
 });
