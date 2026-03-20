@@ -1,10 +1,8 @@
 @import "str-to-list";
 
-.topic-body .cooked {
-  // 最强防御：所有非站内、非提及的链接，默认全部打上外部链接标识！
-  a:not(.mention):not(.hashtag):not(.lightbox):not(.blocked-link):not(.restricted-link-login):not(.restricted-link-tl0):not(.secure-links-reveal):not([href^="/"]):not([href^="#"]):not([href*="qingju.me"]) {
-    
-    // 默认外部链接图标
+.topic-body .cooked, .d-editor-preview {
+  // 不管你原先带什么乱七八糟的类名，只要被JS打上这个标签，老老实实给我加上伪元素图标！
+  a.external-link, a.dangerous-link, a.risky-link, a.trusted-link {
     &:before {
       content: "";
       display: inline-block !important;
@@ -12,40 +10,31 @@
       margin-right: 4px;
       vertical-align: middle;
       background-size: contain; background-repeat: no-repeat;
-      opacity: 0.8;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%232196F3' d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
+      opacity: 1 !important;
     }
   }
 
-  // 被 JS 打上内部标签的强制隐藏图标
-  a[data-security-level="internal"]:before { display: none !important; }
-
-  // 信任链接 -> 绿色小锁
-  a[data-security-level="trusted"], a.trusted-link {
-    color: var(--success);
-    &:before {
-      opacity: 1;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 448 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23008A00' d='M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z'/%3E%3C/svg%3E") !important;
-    }
+  // 正常外部链接蓝云朵
+  a.external-link:not(.inline-onebox):before {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%232196F3' d='M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z'/%3E%3C/svg%3E");
   }
 
-  // 风险链接 -> 黄色警告
-  a[data-security-level="risky"], a.risky-link {
-    color: var(--yellow-600);
-    &:before {
-      opacity: 1;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D97706' d='M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z'/%3E%3C/svg%3E") !important;
-    }
+  // 信任绿锁
+  a.trusted-link { color: var(--success); }
+  a.trusted-link:not(.inline-onebox):before {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 448 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23008A00' d='M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z'/%3E%3C/svg%3E") !important;
   }
 
-  // 危险链接 -> 红色骷髅
-  a[data-security-level="dangerous"], a.dangerous-link {
-    color: var(--danger);
-    font-weight: bold;
-    &:before {
-      opacity: 1;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D32F2F' d='M416 398.9c58.8-26.1 96-85.1 96-150.9C512 137.3 397.3 48 256 48S0 137.3 0 248c0 65.8 37.2 124.8 96 150.9V424c0 22.1 17.9 40 40 40h72c0 26.5 21.5 48 48 48s48-21.5 48-48h72c22.1 0 40-17.9 40-40V398.9zM192 256c0-17.7 14.3-32 32-32s32 14.3 32 32-14.3 32-32 32-32-14.3-32-32zm128 32c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z'/%3E%3C/svg%3E") !important;
-    }
+  // 危险红骷髅
+  a.dangerous-link { color: var(--danger); font-weight: bold; }
+  a.dangerous-link:not(.inline-onebox):before {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D32F2F' d='M416 398.9c58.8-26.1 96-85.1 96-150.9C512 137.3 397.3 48 256 48S0 137.3 0 248c0 65.8 37.2 124.8 96 150.9V424c0 22.1 17.9 40 40 40h72c0 26.5 21.5 48 48 48s48-21.5 48-48h72c22.1 0 40-17.9 40-40V398.9zM192 256c0-17.7 14.3-32 32-32s32 14.3 32 32-14.3 32-32 32-32-14.3-32-32zm128 32c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z'/%3E%3C/svg%3E") !important;
+  }
+
+  // 风险黄警告
+  a.risky-link { color: var(--yellow-600); }
+  a.risky-link:not(.inline-onebox):before {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23D97706' d='M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z'/%3E%3C/svg%3E") !important;
   }
 }
 
@@ -65,6 +54,7 @@
   }
 }
 
+// 弹窗样式依然保留原来的即可
 .d-modal.external-link-modal {
   .d-modal__content {
     border-radius: 12px;
@@ -73,14 +63,9 @@
     max-width: 420px;
     overflow: hidden;
   }
-
   .d-modal__header { display: none !important; }
   .d-modal__footer { display: none !important; }
-  .d-modal__body { 
-    padding: 0 !important; 
-    display: block !important;
-  }
-
+  .d-modal__body { padding: 0 !important; display: block !important; }
   .custom-header {
     position: relative;
     padding: 14px 16px; 
@@ -90,24 +75,19 @@
     align-items: center;
     justify-content: center;
     border-radius: 12px 12px 0 0;
-
     .header-content { display: flex; align-items: center; gap: 8px; }
-    
     .header-icon { 
       width: 20px; height: 20px; 
       display: flex; align-items: center; justify-content: center;
       svg { width: 100%; height: 100%; } 
     }
-    
     .header-title { font-size: 1rem; font-weight: 700; color: var(--primary); }
-    
     .header-badge {
       font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; line-height: 1.2;
       &.normal { background: rgba(33, 150, 243, 0.1); color: #2196F3; }
       &.risky { background: rgba(217, 119, 6, 0.15); color: #D97706; }
       &.dangerous { background: rgba(211, 47, 47, 0.15); color: #D32F2F; }
     }
-
     .close-btn {
       position: absolute; right: 12px; background: none; border: none; cursor: pointer;
       color: var(--primary-medium); padding: 0; width: 24px; height: 24px;
@@ -116,15 +96,12 @@
       svg { width: 12px; height: 12px; }
     }
   }
-
   .shield-body-content { 
     padding: 16px 20px; 
     text-align: center;
     color: var(--primary);
   }
-  
   .desc { margin-bottom: 12px; color: var(--primary-medium); font-size: 0.9rem; line-height: 1.4; }
-  
   .url-box { 
     background: var(--primary-very-low); 
     color: var(--primary); 
@@ -136,14 +113,12 @@
     font-size: 0.8rem;
     border: 1px solid rgba(var(--primary-rgb), 0.05);
   }
-  
   .report-hint { 
     font-size: 0.8rem; 
     color: var(--primary-medium); 
     display: flex; align-items: center; justify-content: center; gap: 4px; 
     svg { width: 0.9em; height: 0.9em; }
   }
-  
   .custom-footer {
     display: flex;
     justify-content: flex-end; 
@@ -155,7 +130,6 @@
     box-sizing: border-box;
     border-top: none !important;
     border-radius: 0 0 12px 12px;
-    
     .btn { 
       border-radius: 6px; 
       font-weight: 600; 
@@ -163,7 +137,6 @@
       font-size: 0.9rem;
       margin: 0;
     }
-    
     .btn-primary { background: #2196F3; color: white; border:none; }
     .btn-danger { background: #D32F2F; color: white; border:none; }
     .btn-warning { background: #D97706; color: white; border:none; }
