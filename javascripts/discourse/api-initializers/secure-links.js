@@ -14,7 +14,11 @@ export default apiInitializer((api) => {
       const urlObj = new URL(d.startsWith('http') ? d : `http://${d}`);
       return urlObj.hostname.replace(/^www\./, '');
     } catch (e) {
-      return d.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split('?')[0];
+      return d
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .split('/')[0]
+        .split('?')[0];
     }
   };
 
@@ -42,6 +46,7 @@ export default apiInitializer((api) => {
       const href = link.getAttribute("href");
       if (!href || href.startsWith("#")) return true; 
       if (href.startsWith("/")) return true; 
+      
       if (link.href.includes(window.location.hostname)) return true;
       if (matchesDomain(link.href, INTERNAL_LIST)) return true;
     } catch(e) { return false; }
@@ -60,8 +65,7 @@ export default apiInitializer((api) => {
     });
   };
 
-  // 💥 终极修复：全局事件委托 (Event Delegation) 💥
-  // 无论 DOM 怎么被其他插件(如登录可见插件)重写，只要带有 data-security-level 属性，点击事件就绝不会丢失！
+  // 🛡️ 核心修复：开启事件委托。即使 DOM 后来被其他插件重写，只要带有 data-security-level 属性，照样拦截弹窗！
   if (!window._secureLinksDelegated) {
     document.body.addEventListener("click", (e) => {
       const link = e.target.closest("a[data-security-level]");
@@ -69,12 +73,9 @@ export default apiInitializer((api) => {
 
       const level = link.dataset.securityLevel;
       
-      // 受信或内部链接，直接放行
       if (level === "internal" || level === "trusted") return;
-      // 普通链接且未开启弹窗，直接放行
       if (level === "normal" && !settings.enable_exit_confirmation) return;
 
-      // 拦截并弹窗
       openModal(e, link.href, level);
     });
     window._secureLinksDelegated = true;
@@ -145,7 +146,6 @@ export default apiInitializer((api) => {
         link.setAttribute("target", "_blank");
         link.setAttribute("rel", "noopener noreferrer");
 
-        // TL1 手动显示逻辑
         if (currentUser && currentUser.trust_level === 1 && settings.enable_tl1_manual_reveal) {
           const button = document.createElement("a");
           button.href = "javascript:void(0)";
@@ -158,20 +158,13 @@ export default apiInitializer((api) => {
             realLink.setAttribute("target", "_blank"); 
             realLink.innerHTML = link.innerHTML;
             realLink.dataset.securityLevel = level; 
-            
-            // 手动展开的链接也接入事件系统
-            realLink.addEventListener("click", (ev) => {
-               if (level === "internal" || level === "trusted") return;
-               if (level === "normal" && !settings.enable_exit_confirmation) return;
-               openModal(ev, url, level);
-            });
-            
             button.replaceWith(realLink);
           });
           link.replaceWith(button);
           return;
         }
-        
+
+        // ⚠️ 重点：这里不再使用 link.addEventListener 绑定弹窗事件，全部交给上方的 document.body 事件委托处理！
       });
 
     } catch (e) {
