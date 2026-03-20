@@ -5,7 +5,6 @@ import { i18n } from "discourse-i18n";
 export default apiInitializer("0.11", (api) => {
   const currentUser = api.getCurrentUser();
   const modal = api.container.lookup("service:modal");
-
   const safeSplit = (str) => (str || "").split("|").filter(Boolean);
 
   const getHostnameFromConfig = (entry) => {
@@ -32,9 +31,7 @@ export default apiInitializer("0.11", (api) => {
       return domainList.some(configHostname => {
         return linkHostname === configHostname || linkHostname.endsWith("." + configHostname);
       });
-    } catch (e) {
-      return false; 
-    }
+    } catch (e) { return false; }
   };
 
   const isInternal = (link) => {
@@ -63,37 +60,29 @@ export default apiInitializer("0.11", (api) => {
     document.body.addEventListener("click", (e) => {
       const link = e.target.closest("a[data-security-level]");
       if (!link) return;
-
       const level = link.dataset.securityLevel;
-      if (level === "internal" || level === "trusted") return;
+      if (level === "internal" || level === "trusted" || level === "blocked") return;
       if (level === "normal" && !settings.enable_exit_confirmation) return;
-
       openModal(e, link.href, level);
     }, true);
     window._secureLinksDelegated = true;
   }
 
+  // 这是主动识别链接并挂载护盾的核心
   const applyShield = (element) => {
     if (!element) return;
     const links = element.querySelectorAll("a[href]");
     
     links.forEach(link => {
-      // 严格放过艾特、话题、图片点击，但绝不放过正常的内联外部链接！
-      if (
-        link.classList.contains("mention") || 
-        link.classList.contains("hashtag") ||
-        link.classList.contains("lightbox") || 
-        link.classList.contains("attachment") || 
-        link.hasAttribute("data-security-level")
-      ) return;
+      if (link.hasAttribute("data-security-level")) return; // 已处理过不再处理
+      if (link.classList.contains("mention") || link.classList.contains("hashtag") || link.classList.contains("lightbox") || link.classList.contains("attachment") || link.classList.contains("secure-links-reveal")) return;
 
       const url = link.href;
 
       if (matchesDomain(url, BLOCKED_LIST)) {
-        const span = document.createElement("span");
-        span.className = "blocked-link"; 
-        span.innerText = `[${i18n(themePrefix("secure_links.blocked_text")) || "Blocked"}]`;
-        link.replaceWith(span);
+        link.dataset.securityLevel = "blocked";
+        link.classList.add("blocked-link");
+        link.innerText = "[Blocked]";
         return;
       }
 
@@ -119,18 +108,19 @@ export default apiInitializer("0.11", (api) => {
           level = "risky";
           link.classList.add("risky-link");
       } else {
-          link.classList.add("external-link");
+          link.classList.add("external-link"); // 普通外链，重点！
       }
       
       link.dataset.securityLevel = level;
       link.setAttribute("target", "_blank");
       link.setAttribute("rel", "noopener noreferrer");
 
+      // 权限处理
       if (!currentUser && settings.enable_anonymous_blocking) {
         const newLink = document.createElement("a");
         newLink.href = settings.anonymous_redirect_url || "/login";
         newLink.className = "restricted-link-login " + link.className; 
-        newLink.innerText = i18n(themePrefix("secure_links.login_to_view")) || "Login to view";
+        newLink.innerText = "Login to view";
         link.replaceWith(newLink);
         return;
       }
@@ -139,7 +129,7 @@ export default apiInitializer("0.11", (api) => {
         const newLink = document.createElement("a");
         newLink.href = settings.tl0_redirect_url || "#";
         newLink.className = "restricted-link-tl0 " + link.className;
-        newLink.innerText = i18n(themePrefix("secure_links.first_trust_level_to_view")) || "TL1 required";
+        newLink.innerText = "TL1 required";
         link.replaceWith(newLink);
         return;
       }
@@ -147,7 +137,7 @@ export default apiInitializer("0.11", (api) => {
       if (currentUser && currentUser.trust_level === 1 && settings.enable_tl1_manual_reveal) {
         const button = document.createElement("a");
         button.href = "javascript:void(0)";
-        button.innerText = i18n(themePrefix("secure_links.click_to_view")) || "Click to view";
+        button.innerText = "Click to view";
         button.className = "secure-links-reveal " + link.className;
         button.addEventListener("click", (e) => {
           e.preventDefault();
@@ -167,8 +157,6 @@ export default apiInitializer("0.11", (api) => {
     });
   };
 
-  api.decorateCookedElement(applyShield, { id: "secure-link-shield", onlyStream: true });
-  
-  // 暴漏给全局，确保【隐藏块插件】解锁内容后能第一时间呼叫护盾加持
-  window.applyExternalLinkShield = applyShield;
+  api.decorateCookedElement(applyShield, { id: "secure-link-shield" });
+  window.applyExternalLinkShield = applyShield; // 全局暴露给隐藏插件
 });
