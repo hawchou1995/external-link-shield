@@ -59,7 +59,6 @@ export default apiInitializer("0.11", (api) => {
     });
   };
 
-  // 全局事件捕获，哪怕内容被重写，弹窗拦截依然坚不可摧
   if (!window._secureLinksDelegated) {
     document.body.addEventListener("click", (e) => {
       const link = e.target.closest("a[data-security-level]");
@@ -74,18 +73,18 @@ export default apiInitializer("0.11", (api) => {
     window._secureLinksDelegated = true;
   }
 
-  // 这是给链接穿护盾的核心逻辑
   const applyShield = (element) => {
     if (!element) return;
     const links = element.querySelectorAll("a[href]");
     
     links.forEach(link => {
+      // 严格放过艾特、话题、图片点击，但绝不放过正常的内联外部链接！
       if (
         link.classList.contains("mention") || 
+        link.classList.contains("hashtag") ||
         link.classList.contains("lightbox") || 
         link.classList.contains("attachment") || 
-        link.classList.contains("onebox") ||
-        link.hasAttribute("data-security-level") // 防止重复处理
+        link.hasAttribute("data-security-level")
       ) return;
 
       const url = link.href;
@@ -93,7 +92,7 @@ export default apiInitializer("0.11", (api) => {
       if (matchesDomain(url, BLOCKED_LIST)) {
         const span = document.createElement("span");
         span.className = "blocked-link"; 
-        span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
+        span.innerText = `[${i18n(themePrefix("secure_links.blocked_text")) || "Blocked"}]`;
         link.replaceWith(span);
         return;
       }
@@ -101,8 +100,6 @@ export default apiInitializer("0.11", (api) => {
       if (isInternal(link)) {
         link.dataset.securityLevel = "internal"; 
         link.classList.add("internal-link");
-        link.setAttribute("target", "_blank");
-        link.setAttribute("rel", "noopener noreferrer");
         return;
       }
 
@@ -122,7 +119,7 @@ export default apiInitializer("0.11", (api) => {
           level = "risky";
           link.classList.add("risky-link");
       } else {
-          link.classList.add("external-link"); // 找回被抹去的外部链接图标标识！
+          link.classList.add("external-link");
       }
       
       link.dataset.securityLevel = level;
@@ -133,7 +130,7 @@ export default apiInitializer("0.11", (api) => {
         const newLink = document.createElement("a");
         newLink.href = settings.anonymous_redirect_url || "/login";
         newLink.className = "restricted-link-login " + link.className; 
-        newLink.innerText = i18n(themePrefix("secure_links.login_to_view"));
+        newLink.innerText = i18n(themePrefix("secure_links.login_to_view")) || "Login to view";
         link.replaceWith(newLink);
         return;
       }
@@ -142,7 +139,7 @@ export default apiInitializer("0.11", (api) => {
         const newLink = document.createElement("a");
         newLink.href = settings.tl0_redirect_url || "#";
         newLink.className = "restricted-link-tl0 " + link.className;
-        newLink.innerText = i18n(themePrefix("secure_links.first_trust_level_to_view"));
+        newLink.innerText = i18n(themePrefix("secure_links.first_trust_level_to_view")) || "TL1 required";
         link.replaceWith(newLink);
         return;
       }
@@ -150,7 +147,7 @@ export default apiInitializer("0.11", (api) => {
       if (currentUser && currentUser.trust_level === 1 && settings.enable_tl1_manual_reveal) {
         const button = document.createElement("a");
         button.href = "javascript:void(0)";
-        button.innerText = i18n(themePrefix("secure_links.click_to_view"));
+        button.innerText = i18n(themePrefix("secure_links.click_to_view")) || "Click to view";
         button.className = "secure-links-reveal " + link.className;
         button.addEventListener("click", (e) => {
           e.preventDefault();
@@ -170,11 +167,8 @@ export default apiInitializer("0.11", (api) => {
     });
   };
 
-  // 正常页面渲染时触发
   api.decorateCookedElement(applyShield, { id: "secure-link-shield", onlyStream: true });
   
-  // 监听自定义事件，专门为了配合后面的【隐藏插件】解锁内容后重新刷新图标！
-  document.addEventListener("secureContentUnlocked", (e) => {
-    applyShield(e.detail.element);
-  });
+  // 暴漏给全局，确保【隐藏块插件】解锁内容后能第一时间呼叫护盾加持
+  window.applyExternalLinkShield = applyShield;
 });
