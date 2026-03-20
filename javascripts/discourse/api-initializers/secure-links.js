@@ -2,7 +2,7 @@ import { apiInitializer } from "discourse/lib/api";
 import ExternalLinkConfirm from "../components/modal/external-link-confirm";
 import { i18n } from "discourse-i18n";
 
-export default apiInitializer((api) => {
+export default apiInitializer("0.11", (api) => {
   const currentUser = api.container.lookup("service:current-user");
   const modal = api.container.lookup("service:modal");
 
@@ -14,11 +14,7 @@ export default apiInitializer((api) => {
       const urlObj = new URL(d.startsWith('http') ? d : `http://${d}`);
       return urlObj.hostname.replace(/^www\./, '');
     } catch (e) {
-      return d
-        .replace(/^https?:\/\//, '')
-        .replace(/^www\./, '')
-        .split('/')[0]
-        .split('?')[0];
+      return d.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split('?')[0];
     }
   };
 
@@ -46,7 +42,6 @@ export default apiInitializer((api) => {
       const href = link.getAttribute("href");
       if (!href || href.startsWith("#")) return true; 
       if (href.startsWith("/")) return true; 
-      
       if (link.href.includes(window.location.hostname)) return true;
       if (matchesDomain(link.href, INTERNAL_LIST)) return true;
     } catch(e) { return false; }
@@ -65,14 +60,13 @@ export default apiInitializer((api) => {
     });
   };
 
-  // 🛡️ 核心修复：开启事件委托。即使 DOM 后来被其他插件重写，只要带有 data-security-level 属性，照样拦截弹窗！
+  // 全局事件委托：哪怕链接所在的区块被其他插件暴力刷新，由于我们在最外层监听，点击拦截依然生效！
   if (!window._secureLinksDelegated) {
     document.body.addEventListener("click", (e) => {
       const link = e.target.closest("a[data-security-level]");
       if (!link) return;
 
       const level = link.dataset.securityLevel;
-      
       if (level === "internal" || level === "trusted") return;
       if (level === "normal" && !settings.enable_exit_confirmation) return;
 
@@ -92,7 +86,8 @@ export default apiInitializer((api) => {
           link.classList.contains("mention") || 
           link.classList.contains("lightbox") || 
           link.classList.contains("attachment") || 
-          link.classList.contains("onebox")
+          link.classList.contains("onebox") ||
+          link.hasAttribute("data-security-level") // 防重复处理
         ) return;
 
         const url = link.href;
@@ -107,6 +102,7 @@ export default apiInitializer((api) => {
 
         if (isInternal(link)) {
           link.dataset.securityLevel = "internal"; 
+          link.classList.add("internal-link"); // ✅ 找回丢失的内部链接 CSS 类名
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
           return;
@@ -114,14 +110,23 @@ export default apiInitializer((api) => {
 
         if (matchesDomain(url, TRUSTED_LIST)) {
           link.dataset.securityLevel = "trusted"; 
+          link.classList.add("trusted-link"); // ✅ 找回信任链接类名
           link.setAttribute("target", "_blank");
           link.setAttribute("rel", "noopener noreferrer");
           return; 
         }
 
+        // ✅ 找回外部链接类名，这是图标正常显示的核心！
         let level = "normal";
-        if (matchesDomain(url, DANGEROUS_LIST)) level = "dangerous";
-        else if (matchesDomain(url, RISKY_LIST)) level = "risky";
+        if (matchesDomain(url, DANGEROUS_LIST)) {
+            level = "dangerous";
+            link.classList.add("dangerous-link");
+        } else if (matchesDomain(url, RISKY_LIST)) {
+            level = "risky";
+            link.classList.add("risky-link");
+        } else {
+            link.classList.add("external-link");
+        }
         
         link.dataset.securityLevel = level;
 
@@ -158,15 +163,13 @@ export default apiInitializer((api) => {
             realLink.setAttribute("target", "_blank"); 
             realLink.innerHTML = link.innerHTML;
             realLink.dataset.securityLevel = level; 
+            realLink.className = link.className; // ✅ 保证手动展示的链接也带有外部图标的 CSS 类
             button.replaceWith(realLink);
           });
           link.replaceWith(button);
           return;
         }
-
-        // ⚠️ 重点：这里不再使用 link.addEventListener 绑定弹窗事件，全部交给上方的 document.body 事件委托处理！
       });
-
     } catch (e) {
       console.error("[Link Shield] Error:", e);
     }
