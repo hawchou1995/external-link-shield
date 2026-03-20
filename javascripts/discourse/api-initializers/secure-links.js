@@ -48,27 +48,39 @@ export default apiInitializer("0.11", (api) => {
     e.preventDefault();
     e.stopPropagation();
     modal.show(ExternalLinkConfirm, {
-      model: {
-        url: url,
-        securityLevel: level,
-        openInNewTab: settings.external_links_in_new_tab
-      }
+      model: { url: url, securityLevel: level, openInNewTab: settings.external_links_in_new_tab }
     });
   };
 
   if (!window._secureLinksDelegated) {
     document.body.addEventListener("click", (e) => {
-      const link = e.target.closest("a[data-security-level]");
+      const link = e.target.closest("a[href]");
       if (!link) return;
-      const level = link.dataset.securityLevel;
+      
+      // 哪怕类名被其他插件抹除，也能准确识别身份
+      if (isInternal(link)) return;
+      if (link.classList.contains("mention") || link.classList.contains("hashtag") || link.classList.contains("lightbox") || link.classList.contains("secure-links-reveal")) return;
+
+      let level = link.dataset.securityLevel;
       if (level === "internal" || level === "trusted" || level === "blocked") return;
+
+      // 如果没有任何标签，就地验明正身！
+      if (!level) {
+         if (matchesDomain(link.href, BLOCKED_LIST)) return;
+         if (matchesDomain(link.href, TRUSTED_LIST)) return;
+         if (matchesDomain(link.href, DANGEROUS_LIST)) level = "dangerous";
+         else if (matchesDomain(link.href, RISKY_LIST)) level = "risky";
+         else level = "normal";
+      }
+
       if (level === "normal" && !settings.enable_exit_confirmation) return;
+      if (link.closest(".d-editor-preview") || link.closest(".d-modal")) return;
+
       openModal(e, link.href, level);
     }, true);
     window._secureLinksDelegated = true;
   }
 
-  // 核心护盾处理机制
   const applyShield = (element) => {
     if (!element) return;
     const links = element.querySelectorAll("a[href]");
@@ -82,7 +94,7 @@ export default apiInitializer("0.11", (api) => {
       if (matchesDomain(url, BLOCKED_LIST)) {
         link.dataset.securityLevel = "blocked";
         link.classList.add("blocked-link");
-        link.innerText = "[Blocked]";
+        link.innerText = `[${i18n(themePrefix("secure_links.blocked_text")) || "Blocked"}]`;
         return;
       }
 
@@ -119,7 +131,7 @@ export default apiInitializer("0.11", (api) => {
         const newLink = document.createElement("a");
         newLink.href = settings.anonymous_redirect_url || "/login";
         newLink.className = "restricted-link-login " + link.className; 
-        newLink.innerText = "Login to view";
+        newLink.innerText = i18n(themePrefix("secure_links.login_to_view")) || "Login to view";
         link.replaceWith(newLink);
         return;
       }
@@ -128,7 +140,7 @@ export default apiInitializer("0.11", (api) => {
         const newLink = document.createElement("a");
         newLink.href = settings.tl0_redirect_url || "#";
         newLink.className = "restricted-link-tl0 " + link.className;
-        newLink.innerText = "TL1 required";
+        newLink.innerText = i18n(themePrefix("secure_links.first_trust_level_to_view")) || "TL1 required";
         link.replaceWith(newLink);
         return;
       }
@@ -136,7 +148,7 @@ export default apiInitializer("0.11", (api) => {
       if (currentUser && currentUser.trust_level === 1 && settings.enable_tl1_manual_reveal) {
         const button = document.createElement("a");
         button.href = "javascript:void(0)";
-        button.innerText = "Click to view";
+        button.innerText = i18n(themePrefix("secure_links.click_to_view")) || "Click to view";
         button.className = "secure-links-reveal " + link.className;
         button.addEventListener("click", (e) => {
           e.preventDefault();
@@ -156,7 +168,6 @@ export default apiInitializer("0.11", (api) => {
     });
   };
 
-  // 【致命修复】：移除 onlyStream，使脚本可以扫描 Callout 框和回复隐藏框内被解锁的链接！
   api.decorateCookedElement(applyShield, { id: "secure-link-shield" });
   window.applyExternalLinkShield = applyShield; 
 });
