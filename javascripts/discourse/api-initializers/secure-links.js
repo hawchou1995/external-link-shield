@@ -1,176 +1,93 @@
 import { apiInitializer } from "discourse/lib/api";
-import ExternalLinkConfirm from "../components/modal/external-link-confirm";
-import { i18n } from "discourse-i18n";
+// 引入你原有的弹窗组件，路径请根据你的实际情况保持一致
+import ExternalLinkConfirm from "../components/modal/external-link-confirm"; 
 
-export default apiInitializer((api) => {
-  const currentUser = api.container.lookup("service:current-user");
-  const modal = api.container.lookup("service:modal");
-
-  const safeSplit = (str) => (str || "").split("|").filter(Boolean);
-
-  // 🔧 工具函数：提取纯净域名
-  const getHostnameFromConfig = (entry) => {
-    let d = entry.trim().toLowerCase();
+export default apiInitializer("0.8", (api) => {
+  
+  // ==========================================
+  // 🧩 模块 1：外部链接判定引擎 (零信任假设)
+  // ==========================================
+  const isExternalLink = (aElement) => {
+    if (!aElement.href) return false;
+    
+    // 排除相对路径、锚点、邮件或 JS 协议
+    if (aElement.getAttribute('href').startsWith('/') || 
+        aElement.href.startsWith("javascript:") || 
+        aElement.href.startsWith("mailto:") || 
+        aElement.href.startsWith("#")) {
+      return false;
+    }
+    
     try {
-      const urlObj = new URL(d.startsWith('http') ? d : `http://${d}`);
-      return urlObj.hostname.replace(/^www\./, '');
+      const targetUrl = new URL(aElement.href, window.location.origin);
+      const currentHost = window.location.hostname;
+      
+      // 核心判断：域名是否不同
+      return targetUrl.hostname !== currentHost;
     } catch (e) {
-      return d
-        .replace(/^https?:\/\//, '')
-        .replace(/^www\./, '')
-        .split('/')[0]
-        .split('?')[0];
+      return false; // 无法解析的 URL 一律放过，防崩
     }
   };
 
-  // ⚡️⚡️ 极致优化：预先计算所有列表 (只执行一次) ⚡️⚡️
-  // 避免在遍历成百上千个链接时重复解析配置字符串
-  const BLOCKED_LIST = safeSplit(settings.blocked_domains).map(getHostnameFromConfig);
-  const INTERNAL_LIST = safeSplit(settings.internal_domains).map(getHostnameFromConfig);
-  const TRUSTED_LIST = safeSplit(settings.excluded_domains).map(getHostnameFromConfig);
-  const DANGEROUS_LIST = safeSplit(settings.dangerous_domains).map(getHostnameFromConfig);
-  const RISKY_LIST = safeSplit(settings.risky_domains).map(getHostnameFromConfig);
-
-  // 🔄 优化后的匹配函数：直接使用预处理好的 domainList 数组
-  const matchesDomain = (urlStr, domainList) => {
-    if (!urlStr) return false;
-    try {
-      const urlObj = new URL(urlStr); 
-      const linkHostname = urlObj.hostname.toLowerCase().replace(/^www\./, '');
-      
-      // 直接在缓存的列表中查找
-      return domainList.some(configHostname => {
-        return linkHostname === configHostname || linkHostname.endsWith("." + configHostname);
-      });
-    } catch (e) {
-      return false; 
-    }
+  // ==========================================
+  // 🧩 模块 2：UI 防御与组件豁免矩阵
+  // ==========================================
+  const shouldIgnore = (aElement) => {
+    // 黑名单类名：只要 A 标签或其父级含有这些特征，就不当做普通文字外链处理
+    // inline-onebox: 一行内的网站标题链接
+    // mention: @用户
+    // lightbox: 图片放大框
+    const ignoreClasses = ['mention', 'hashtag', 'attachment', 'lightbox', 'inline-onebox', 'badge-category__wrapper'];
+    
+    const hasIgnoreClass = ignoreClasses.some(c => aElement.classList.contains(c));
+    // 排除富媒体卡片区块内部的链接
+    const insideComplexBlock = aElement.closest('.onebox') || aElement.closest('.quote') || aElement.closest('.video-container');
+    
+    return hasIgnoreClass || insideComplexBlock;
   };
 
-  const isInternal = (link) => {
-    try {
-      const href = link.getAttribute("href");
-      if (!href || href.startsWith("#")) return true; 
-      if (href.startsWith("/")) return true; 
-      
-      if (link.href.includes(window.location.hostname)) return true;
-      // ⚡️ 使用缓存列表
-      if (matchesDomain(link.href, INTERNAL_LIST)) return true;
-    } catch(e) { return false; }
-    return false;
-  };
+  // ==========================================
+  // 🧩 模块 3：官方生命周期挂载与 DOM 注入
+  // ==========================================
+  api.decorateCookedElement((element, helper) => {
+    // 仅在实际的帖子/消息块中寻找链接
+    const links = element.querySelectorAll("a");
+    
+    links.forEach((a) => {
+      // 通过两道网关：确实是外链，且不属于特殊 UI 组件
+      if (isExternalLink(a) && !shouldIgnore(a)) {
+        
+        // 🧪 内置验证点：标记该元素已被护盾接管，防止多次执行重复注入
+        if (a.dataset.shieldApplied === "true") return;
+        a.dataset.shieldApplied = "true";
 
-  const openModal = (e, url, level) => {
-    e.preventDefault();
-    e.stopPropagation();
-    modal.show(ExternalLinkConfirm, {
-      model: {
-        url: url,
-        securityLevel: level,
-        openInNewTab: settings.external_links_in_new_tab
+        // 注入小图标。如果你觉得官方图标库里没有 up-right-from-square，也可以换成 external-link-alt
+        const iconHtml = `<svg class="fa d-icon d-icon-up-right-from-square svg-icon external-link-icon" style="margin-left:4px; margin-bottom:2px; width:12px; height:12px; opacity:0.6; vertical-align:middle;" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><use href="#up-right-from-square"></use></svg>`;
+        a.insertAdjacentHTML('beforeend', iconHtml);
+        
+        // 🚨 防御性编程：绑定点击拦截
+        a.addEventListener("click", (e) => {
+          e.preventDefault();   // 阻断原生跳转
+          e.stopPropagation();  // 防止触发外层元素的冒泡
+          
+          try {
+            const targetHost = new URL(a.href).hostname;
+            // 调用你的 GJS Modal 组件
+            const modal = api.container.lookup("service:modal");
+            modal.show(ExternalLinkConfirm, {
+               model: {
+                 url: a.href,
+                 host: targetHost
+               }
+            });
+          } catch(err) {
+            // 如果 URL 解析极度异常，保底直接跳转以防卡死
+            window.open(a.href, '_blank', 'noopener,noreferrer');
+          }
+        });
       }
     });
-  };
-
-  api.decorateCookedElement((element) => {
-    if (!element) return;
-
-    try {
-      const links = element.querySelectorAll("a[href]");
-      
-      links.forEach(link => {
-        if (
-          link.classList.contains("mention") || 
-          link.classList.contains("lightbox") || 
-          link.classList.contains("attachment") || 
-          link.classList.contains("onebox")
-        ) return;
-
-        const url = link.href;
-
-        // --- 1. 屏蔽 (Blocked) ⚡️ 使用缓存列表 ---
-        if (matchesDomain(url, BLOCKED_LIST)) {
-          const span = document.createElement("span");
-          span.classList.add("blocked-link"); 
-          span.innerText = `[${i18n(themePrefix("secure_links.blocked_text"))}]`;
-          link.replaceWith(span);
-          return;
-        }
-
-        // --- 2. 内部 (Internal) ---
-        if (isInternal(link)) {
-          link.dataset.securityLevel = "internal"; 
-          link.setAttribute("target", "_blank");
-          link.setAttribute("rel", "noopener noreferrer");
-          return;
-        }
-
-        // --- 3. 受信 (Trusted) ⚡️ 使用缓存列表 ---
-        if (matchesDomain(url, TRUSTED_LIST)) {
-          link.dataset.securityLevel = "trusted"; 
-          link.setAttribute("target", "_blank");
-          link.setAttribute("rel", "noopener noreferrer");
-          return; 
-        }
-
-        // --- 4. 判定等级 ⚡️ 使用缓存列表 ---
-        let level = "normal";
-        if (matchesDomain(url, DANGEROUS_LIST)) level = "dangerous";
-        else if (matchesDomain(url, RISKY_LIST)) level = "risky";
-        
-        link.dataset.securityLevel = level;
-
-        // --- 5. 登录/权限拦截 ---
-        if (!currentUser && settings.enable_anonymous_blocking) {
-          const newLink = document.createElement("a");
-          newLink.href = settings.anonymous_redirect_url || "/login";
-          newLink.className = "restricted-link-login"; 
-          newLink.innerText = i18n(themePrefix("secure_links.login_to_view"));
-          link.replaceWith(newLink);
-          return;
-        }
-
-        if (currentUser && currentUser.trust_level === 0 && settings.enable_tl0_blocking) {
-          const newLink = document.createElement("a");
-          newLink.href = settings.tl0_redirect_url || "#";
-          newLink.className = "restricted-link-tl0";
-          newLink.innerText = i18n(themePrefix("secure_links.first_trust_level_to_view"));
-          link.replaceWith(newLink);
-          return;
-        }
-
-        // --- 6. 强制新标签页 ---
-        link.setAttribute("target", "_blank");
-        link.setAttribute("rel", "noopener noreferrer");
-
-        // --- 7. TL1 手动查看 ---
-        if (currentUser && currentUser.trust_level === 1 && settings.enable_tl1_manual_reveal) {
-          const button = document.createElement("a");
-          button.href = "javascript:void(0)";
-          button.innerText = i18n(themePrefix("secure_links.click_to_view"));
-          button.className = "secure-links-reveal";
-          button.addEventListener("click", (e) => {
-            e.preventDefault();
-            const realLink = document.createElement("a");
-            realLink.href = url;
-            realLink.setAttribute("target", "_blank"); 
-            realLink.innerHTML = link.innerHTML;
-            realLink.dataset.securityLevel = level; 
-            realLink.addEventListener("click", (ev) => openModal(ev, url, level));
-            button.replaceWith(realLink);
-          });
-          link.replaceWith(button);
-          return;
-        }
-
-        // --- 8. 绑定弹窗 ---
-        if (level === "normal" && !settings.enable_exit_confirmation) return;
-
-        link.addEventListener("click", (e) => openModal(e, url, level));
-      });
-
-    } catch (e) {
-      console.error("[Link Shield] Error:", e);
-    }
-  }, { id: "secure-link-shield", onlyStream: true });
+  }, {
+    id: "endfield-external-link-shield-core" // 命名空间标识，极重要，防止 SPA 架构下重复执行
+  });
 });
