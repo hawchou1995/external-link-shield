@@ -1,93 +1,177 @@
 import { apiInitializer } from "discourse/lib/api";
-// 引入你原有的弹窗组件，路径请根据你的实际情况保持一致
-import ExternalLinkConfirm from "../components/modal/external-link-confirm"; 
+import ExternalLinkConfirm from "../components/modal/external-link-confirm";
+import { i18n } from "discourse-i18n";
 
 export default apiInitializer("0.8", (api) => {
-  
-  // ==========================================
-  // 🧩 模块 1：外部链接判定引擎 (零信任假设)
-  // ==========================================
-  const isExternalLink = (aElement) => {
-    if (!aElement.href) return false;
-    
-    // 排除相对路径、锚点、邮件或 JS 协议
-    if (aElement.getAttribute('href').startsWith('/') || 
-        aElement.href.startsWith("javascript:") || 
-        aElement.href.startsWith("mailto:") || 
-        aElement.href.startsWith("#")) {
-      return false;
-    }
-    
+  const currentUser = api.container.lookup("service:current-user");
+  const modal = api.container.lookup("service:modal");
+
+  const safeSplit = (str) => (str || "").split("|").filter(Boolean);
+
+  const getHostnameFromConfig = (entry) => {
+    let d = entry.trim().toLowerCase();
     try {
-      const targetUrl = new URL(aElement.href, window.location.origin);
-      const currentHost = window.location.hostname;
-      
-      // 核心判断：域名是否不同
-      return targetUrl.hostname !== currentHost;
+      const urlObj = new URL(d.startsWith('http') ? d : `http://${d}`);
+      return urlObj.hostname.replace(/^www\./, '');
     } catch (e) {
-      return false; // 无法解析的 URL 一律放过，防崩
+      return d.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split('?')[0];
     }
   };
 
-  // ==========================================
-  // 🧩 模块 2：UI 防御与组件豁免矩阵
-  // ==========================================
-  const shouldIgnore = (aElement) => {
-    // 黑名单类名：只要 A 标签或其父级含有这些特征，就不当做普通文字外链处理
-    // inline-onebox: 一行内的网站标题链接
-    // mention: @用户
-    // lightbox: 图片放大框
-    const ignoreClasses = ['mention', 'hashtag', 'attachment', 'lightbox', 'inline-onebox', 'badge-category__wrapper'];
-    
-    const hasIgnoreClass = ignoreClasses.some(c => aElement.classList.contains(c));
-    // 排除富媒体卡片区块内部的链接
-    const insideComplexBlock = aElement.closest('.onebox') || aElement.closest('.quote') || aElement.closest('.video-container');
-    
-    return hasIgnoreClass || insideComplexBlock;
+  const BLOCKED_LIST = safeSplit(settings.blocked_domains).map(getHostnameFromConfig);
+  const INTERNAL_LIST = safeSplit(settings.internal_domains).map(getHostnameFromConfig);
+  const TRUSTED_LIST = safeSplit(settings.excluded_domains).map(getHostnameFromConfig);
+  const DANGEROUS_LIST = safeSplit(settings.dangerous_domains).map(getHostnameFromConfig);
+  const RISKY_LIST = safeSplit(settings.risky_domains).map(getHostnameFromConfig);
+
+  const matchesDomain = (urlStr, domainList) => {
+    if (!urlStr) return false;
+    try {
+      const urlObj = new URL(urlStr); 
+      const linkHostname = urlObj.hostname.toLowerCase().replace(/^www\./, '');
+      return domainList.some(configHostname => linkHostname === configHostname || linkHostname.endsWith("." + configHostname));
+    } catch (e) {
+      return false; 
+    }
   };
 
-  // ==========================================
-  // 🧩 模块 3：官方生命周期挂载与 DOM 注入
-  // ==========================================
-  api.decorateCookedElement((element, helper) => {
-    // 仅在实际的帖子/消息块中寻找链接
-    const links = element.querySelectorAll("a");
-    
-    links.forEach((a) => {
-      // 通过两道网关：确实是外链，且不属于特殊 UI 组件
-      if (isExternalLink(a) && !shouldIgnore(a)) {
-        
-        // 🧪 内置验证点：标记该元素已被护盾接管，防止多次执行重复注入
-        if (a.dataset.shieldApplied === "true") return;
-        a.dataset.shieldApplied = "true";
+  const isInternal = (link) => {
+    try {
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("/")) return true; 
+      if (link.href.includes(window.location.hostname)) return true;
+      if (matchesDomain(link.href, INTERNAL_LIST)) return true;
+    } catch(e) { return false; }
+    return false;
+  };
 
-        // 注入小图标。如果你觉得官方图标库里没有 up-right-from-square，也可以换成 external-link-alt
-        const iconHtml = `<svg class="fa d-icon d-icon-up-right-from-square svg-icon external-link-icon" style="margin-left:4px; margin-bottom:2px; width:12px; height:12px; opacity:0.6; vertical-align:middle;" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><use href="#up-right-from-square"></use></svg>`;
-        a.insertAdjacentHTML('beforeend', iconHtml);
-        
-        // 🚨 防御性编程：绑定点击拦截
-        a.addEventListener("click", (e) => {
-          e.preventDefault();   // 阻断原生跳转
-          e.stopPropagation();  // 防止触发外层元素的冒泡
-          
-          try {
-            const targetHost = new URL(a.href).hostname;
-            // 调用你的 GJS Modal 组件
-            const modal = api.container.lookup("service:modal");
-            modal.show(ExternalLinkConfirm, {
-               model: {
-                 url: a.href,
-                 host: targetHost
-               }
-            });
-          } catch(err) {
-            // 如果 URL 解析极度异常，保底直接跳转以防卡死
-            window.open(a.href, '_blank', 'noopener,noreferrer');
-          }
-        });
+  const openModal = (e, url, level) => {
+    e.preventDefault();
+    e.stopPropagation();
+    modal.show(ExternalLinkConfirm, {
+      model: {
+        url: url,
+        securityLevel: level,
+        openInNewTab: settings.external_links_in_new_tab
       }
     });
-  }, {
-    id: "endfield-external-link-shield-core" // 命名空间标识，极重要，防止 SPA 架构下重复执行
-  });
+  };
+  
+  // 兼容获取 i18n 文本
+  const getI18nText = (key) => {
+     try {
+       return i18n(themePrefix(key));
+     } catch(e) {
+       return key; 
+     }
+  };
+
+  const processLink = (link) => {
+    // 【关键修复 1】如果已经处理过，或者属于大卡片/图片放大，则跳过
+    // ⚠️ 注意：这里故意去掉了 inline-onebox，让“直接粘贴的链接”也能被正常附魔！
+    if (link.dataset.securityLevel) return;
+    if (
+      link.classList.contains("mention") || 
+      link.classList.contains("lightbox") || 
+      link.classList.contains("attachment") || 
+      link.classList.contains("onebox")
+    ) return;
+
+    const url = link.href;
+
+    // --- 1. 拦截屏蔽域名 ---
+    if (matchesDomain(url, BLOCKED_LIST)) {
+      const span = document.createElement("span");
+      span.classList.add("blocked-link"); 
+      span.innerText = `[${getI18nText("secure_links.blocked_text")}]`;
+      link.replaceWith(span);
+      return;
+    }
+
+    // --- 2. 判定是否内部链接 ---
+    if (isInternal(link)) {
+      link.dataset.securityLevel = "internal"; 
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+      return;
+    }
+
+    // --- 3. 白名单信任 ---
+    if (matchesDomain(url, TRUSTED_LIST)) {
+      link.dataset.securityLevel = "trusted"; 
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+      return; 
+    }
+
+    // --- 4. 定级风险 ---
+    let level = "normal";
+    if (matchesDomain(url, DANGEROUS_LIST)) level = "dangerous";
+    else if (matchesDomain(url, RISKY_LIST)) level = "risky";
+    
+    link.dataset.securityLevel = level;
+
+    // --- 5. 游客与 TL0 拦截 ---
+    if (!currentUser && settings.enable_anonymous_blocking) {
+      const newLink = document.createElement("a");
+      newLink.href = settings.anonymous_redirect_url || "/login";
+      newLink.className = "restricted-link-login"; 
+      newLink.innerText = getI18nText("secure_links.login_to_view");
+      link.replaceWith(newLink);
+      return;
+    }
+
+    if (currentUser && currentUser.trust_level === 0 && settings.enable_tl0_blocking) {
+      const newLink = document.createElement("a");
+      newLink.href = settings.tl0_redirect_url || "#";
+      newLink.className = "restricted-link-tl0";
+      newLink.innerText = getI18nText("secure_links.first_trust_level_to_view");
+      link.replaceWith(newLink);
+      return;
+    }
+
+    link.setAttribute("target", "_blank");
+    link.setAttribute("rel", "noopener noreferrer");
+
+    // --- 6. 正常弹窗绑定 ---
+    if (level === "normal" && !settings.enable_exit_confirmation) return;
+
+    // 防止因为 DOM 监视器频繁触发而重复绑定点击事件
+    if (!link.dataset.hasShieldListener) {
+       link.dataset.hasShieldListener = "true";
+       link.addEventListener("click", (e) => openModal(e, url, level));
+    }
+  };
+
+  // ==========================================
+  // 🧩 官方生命周期挂载与防篡改监视器
+  // ==========================================
+  api.decorateCookedElement((element) => {
+    if (!element) return;
+    
+    // 【第一波附魔】：首次同步解析常规链接
+    element.querySelectorAll("a[href]").forEach(processLink);
+    
+    // 【关键修复 2】：防篡改监视器
+    // 专门抓捕像 Callout (呼出框) 这种异步重写 DOM 的恶劣行为，在其重写完成后，瞬间重新附魔！
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(m => {
+        if (m.addedNodes) {
+          m.addedNodes.forEach(node => {
+            if (node.nodeType === 1) {
+              if (node.tagName === 'A' && node.hasAttribute('href')) {
+                processLink(node);
+              } else {
+                node.querySelectorAll("a[href]").forEach(processLink);
+              }
+            }
+          });
+        }
+      });
+    });
+    
+    // 只监视当前帖子的局部 DOM，对性能影响微乎其微
+    observer.observe(element, { childList: true, subtree: true });
+    
+  }, { id: "secure-link-shield", onlyStream: true });
 });
