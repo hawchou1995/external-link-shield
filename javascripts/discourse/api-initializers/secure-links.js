@@ -68,13 +68,13 @@ export default apiInitializer("0.11", (api) => {
     window._secureLinksDelegated = true;
   }
 
-  // 这是主动识别链接并挂载护盾的核心
+  // 核心护盾处理机制
   const applyShield = (element) => {
     if (!element) return;
     const links = element.querySelectorAll("a[href]");
     
     links.forEach(link => {
-      if (link.hasAttribute("data-security-level")) return; // 已处理过不再处理
+      if (link.hasAttribute("data-security-level")) return;
       if (link.classList.contains("mention") || link.classList.contains("hashtag") || link.classList.contains("lightbox") || link.classList.contains("attachment") || link.classList.contains("secure-links-reveal")) return;
 
       const url = link.href;
@@ -108,14 +108,13 @@ export default apiInitializer("0.11", (api) => {
           level = "risky";
           link.classList.add("risky-link");
       } else {
-          link.classList.add("external-link"); // 普通外链，重点！
+          link.classList.add("external-link");
       }
       
       link.dataset.securityLevel = level;
       link.setAttribute("target", "_blank");
       link.setAttribute("rel", "noopener noreferrer");
 
-      // 权限处理
       if (!currentUser && settings.enable_anonymous_blocking) {
         const newLink = document.createElement("a");
         newLink.href = settings.anonymous_redirect_url || "/login";
@@ -157,6 +156,7 @@ export default apiInitializer("0.11", (api) => {
     });
   };
 
+  // 【致命修复】：移除 onlyStream，使脚本可以扫描 Callout 框和回复隐藏框内被解锁的链接！
   api.decorateCookedElement(applyShield, { id: "secure-link-shield" });
-  window.applyExternalLinkShield = applyShield; // 全局暴露给隐藏插件
+  window.applyExternalLinkShield = applyShield; 
 });
