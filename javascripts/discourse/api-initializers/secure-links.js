@@ -170,8 +170,10 @@ export default apiInitializer("0.11", (api) => {
   api.decorateCookedElement((element) => {
     applyShield(element);
     
-    // 【杀手锏】加入生命探测器！只要 Callout 或其他插件生成了新的链接，瞬间给它重新套上护盾！
+    // 【针对性优化】防抖 (Debounce) 生命探测器
+    // 应对 Callouts 插件高频的 DOM 生成，避免性能风暴
     if (typeof MutationObserver !== "undefined") {
+      let shieldTimeout;
       const observer = new MutationObserver((mutations) => {
         let hasNewNodes = false;
         for (let m of mutations) {
@@ -180,7 +182,14 @@ export default apiInitializer("0.11", (api) => {
             break;
           }
         }
-        if (hasNewNodes) applyShield(element);
+        
+        if (hasNewNodes) {
+          // 清除之前的定时器，如果在 100 毫秒内有新的 DOM 操作，计时重新开始
+          clearTimeout(shieldTimeout);
+          shieldTimeout = setTimeout(() => {
+            applyShield(element);
+          }, 100); 
+        }
       });
       observer.observe(element, { childList: true, subtree: true });
     }
